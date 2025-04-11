@@ -1,0 +1,49 @@
+--TEST--
+get_supported_algorithms() test
+--EXTENSIONS--
+crc_fast
+--FILE--
+<?php
+var_dump(CrcFast\get_supported_algorithms());
+?>
+--EXPECT--
+array(19) {
+  ["CRC-32/AIXM"]=>
+  int(10000)
+  ["CRC32_AUTOSAR"]=>
+  int(10010)
+  ["CRC-32/BASE-91-D"]=>
+  int(10020)
+  ["CRC-32/BZIP2"]=>
+  int(10030)
+  ["CRC-32/CD-ROM-EDC"]=>
+  int(10040)
+  ["CRC-32/CKSUM"]=>
+  int(10050)
+  ["CRC-32/ISCSI"]=>
+  int(10060)
+  ["CRC-32/ISO_HDLC"]=>
+  int(10070)
+  ["CRC-32/JAMCRC"]=>
+  int(10080)
+  ["CRC-32/MEF"]=>
+  int(10090)
+  ["CRC-32/MPEG-2"]=>
+  int(10100)
+  ["CRC-32/XFER"]=>
+  int(10300)
+  ["CRC-64/ECMA-182"]=>
+  int(20000)
+  ["CRC-64/GO-ISO"]=>
+  int(20010)
+  ["CRC-64/MS"]=>
+  int(20020)
+  ["CRC-64/NVME"]=>
+  int(20030)
+  ["CRC-64/REDIS"]=>
+  int(20040)
+  ["CRC-64/WE"]=>
+  int(20050)
+  ["CRC-64/XZ"]=>
+  int(20060)
+}

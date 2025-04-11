@@ -1,0 +1,53 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  # used when called manually.
+  workflow_call:
+  # used when called by _another_ workflow (not when called on this repo!)
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4 # not pinning to commit since this is a GitHub action, which we trust
+      - name: Checkout crc_fast library
+        uses: actions/checkout@v4 # not pinning to commit since this is a GitHub action, which we trust
+        with:
+          repository: awesomized/crc-fast-rust
+          path: lib-crc-fast
+      - id: cache-cargo
+        name: Cache Rust Cargo toolchain
+        uses: actions/cache@v4 # not pinning to commit since this is a GitHub action, which we trust
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-release
+      - if: ${{ steps.cache-cargo.outputs.cache-hit != 'true' }}
+        name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1 # not pinning to commit since this is an archived GitHub action, which we trust
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - name: Build crc_fast library
+        run: cd lib-crc-fast && cargo build --release
+      - name: Copy shared library
+        run: mkdir lib && cp lib-crc-fast/target/release/libcrc_fast.so lib/
+      - name: Copy C/C++ header
+        run: mkdir include && cp lib-crc-fast/libcrc_fast.h include/
+      - name: Phpize
+        run: phpize
+      - name: Configure
+        run: ./configure --with-crc-fast=.
+      - name: Make
+        run: make
+      - name: Test
+        run: make test

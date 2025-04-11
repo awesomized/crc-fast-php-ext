@@ -1,0 +1,44 @@
+{
+    "name": "awesome/crc_fast",
+    "description": "Fast SIMD hardware-accelerated CRC-32 and CRC-64 calculation capable of >100GiB/s",
+    "type": "php-ext",
+    "keywords": ["crc", "crc32", "crc64", "simd", "checksum"],
+    "homepage": "https://github.com/awesomized/crc-fast-php-ext",
+    "license": [
+        "Apache-2.0",
+        "MIT"
+    ],
+    "authors": [
+        {
+            "name": "Don MacAskill",
+            "homepage": "https://github.com/onethumb",
+            "role": "Developer"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/awesomized/crc-fast-php/issues",
+        "source": "https://github.com/awesomized/crc-fast-php"
+    },
+    "php-ext": {
+        "extension-name": "crc_fast",
+        "configure-options": [
+            {
+                "name": "with-crc-fast",
+                "description": "Specify the path to the crc-fast library",
+                "needs-value": true
+            }
+        ]
+    },
+    "prefer-stable": true,
+    "config": {
+        "sort-packages": true
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-main": "2.0.x-dev"
+        }
+    },
+    "require": {
+        "php": "^8.1"
+    }
+}
