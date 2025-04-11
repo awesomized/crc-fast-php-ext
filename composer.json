@@ -16,8 +16,8 @@
         }
     ],
     "support": {
-        "issues": "https://github.com/awesomized/crc-fast-php/issues",
-        "source": "https://github.com/awesomized/crc-fast-php"
+        "issues": "https://github.com/awesomized/crc-fast-php-ext/issues",
+        "source": "https://github.com/awesomized/crc-fast-php-ext"
     },
     "php-ext": {
         "extension-name": "crc_fast",
