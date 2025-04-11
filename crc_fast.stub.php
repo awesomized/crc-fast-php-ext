@@ -93,13 +93,12 @@ namespace CrcFast {
      * Calculates the CRC checksum of the given file.
      *
      * @param int      $algorithm
-     * @param string   $data
+     * @param string   $filename
      * @param bool     $binary Output binary string or hex?
-     * @param null|int $chunkSize
      *
      * @return string
      */
-    function hash_file(int $algorithm, string $data, bool $binary = false, ?int $chunkSize = null): string
+    function hash_file(int $algorithm, string $filename, bool $binary = false): string
     {
     }
 

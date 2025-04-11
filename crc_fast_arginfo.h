@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 4f5859e24637bb505c5d71ba5d1629d782d19230 */
+ * Stub hash: c975a357b8cfe8f140279cc7303e17f08c0794f6 */
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_CrcFast_hash, 0, 2, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, algorithm, IS_LONG, 0)
@@ -9,9 +9,8 @@ ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_CrcFast_hash_file, 0, 2, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, algorithm, IS_LONG, 0)
-	ZEND_ARG_TYPE_INFO(0, data, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, filename, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, binary, _IS_BOOL, 0, "false")
-	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, chunkSize, IS_LONG, 1, "null")
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_CrcFast_get_supported_algorithms, 0, 0, IS_ARRAY, 0)
