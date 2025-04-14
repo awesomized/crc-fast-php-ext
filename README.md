@@ -1,7 +1,7 @@
 `awesome/crc_fast`
 ===========
 
-[![Test status](https://github.com/awesomized/crc-fast-php-ext/workflows/Tests/badge.svg)](https://github.com/awesomized/crc-fast-php-ext/actions?query=workflow%3ATests)
+[![Tests status](https://github.com/awesomized/crc-fast-php-ext/workflows/Tests/badge.svg)](https://github.com/awesomized/crc-fast-php-ext/actions?query=workflow%3ATests)
 [![Latest Stable Version](https://img.shields.io/packagist/v/awesome/crc-fast)](https://packagist.org/packages/awesome/crc-fast)
 
 Fast, hardware-accelerated CRC calculation in `PHP` for [all known CRC-32 and CRC-64 variants](https://reveng.sourceforge.io/crc-catalogue/all.htm) using `SIMD` 
@@ -38,6 +38,12 @@ $checksum = CrcFast\checksum(
     string: '123456789'
 ); // 181989fc
 ```
+
+## Related SIMD-accelerated PHP extensions
+* [simdutf](https://packagist.org/packages/awesome/simdutf) PHP extension for Unicode validation and transcoding at
+  billions of characters per second using the [simdutf](https://github.com/simdutf/simdutf) project.
+* [simdjson_plus](https://packagist.org/packages/awesome/simdjson_plus) PHP extension for parsing gigabytes of JSON per second using the
+  [simdjson](https://github.com/simdjson/simdjson) project.
 
 ## Requirements
 Uses the [crc_fast](https://github.com/awesomized/crc-fast-rust) `Rust` package and its `C`-compatible shared library
