@@ -2,7 +2,7 @@
 ===========
 
 [![Tests status](https://github.com/awesomized/crc-fast-php-ext/workflows/Tests/badge.svg)](https://github.com/awesomized/crc-fast-php-ext/actions?query=workflow%3ATests)
-[![Latest Stable Version](https://img.shields.io/packagist/v/awesome/crc-fast)](https://packagist.org/packages/awesome/crc-fast)
+[![Latest Stable Version](https://img.shields.io/packagist/v/awesome/crc_fast)](https://packagist.org/packages/awesome/crc_fast)
 
 Fast, hardware-accelerated CRC calculation in `PHP` for [all known CRC-32 and CRC-64 variants](https://reveng.sourceforge.io/crc-catalogue/all.htm) using `SIMD` 
 intrinsics, which can exceed _100GiB/s_ for `CRC-32`, and _50GiB/s_ for `CRC-64`, on modern systems.
