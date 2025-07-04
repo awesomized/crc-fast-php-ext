@@ -30,27 +30,27 @@
 
 
 
-- [ ] 4. Update existing functions to support custom parameters
-  - [ ] 4.1 Create parameter detection helper function
+- [x] 4. Update existing functions to support custom parameters
+  - [x] 4.1 Create parameter detection helper function
     - Add helper to determine if parameter is int (algorithm constant) or CrcFast\Params object
     - Extract CrcFastParams struct from Params object when needed
     - _Requirements: 3.1, 3.2, 3.3_
 
-  - [ ] 4.2 Update CrcFast\hash() function
+  - [x] 4.2 Update CrcFast\hash() function
     - Modify function to accept int|CrcFast\Params for algorithm parameter
     - Use crc_fast_checksum() for predefined algorithms
     - Use crc_fast_checksum_with_params() for custom parameters
     - Maintain existing behavior for all predefined algorithms
     - _Requirements: 3.1, 4.1, 4.2_
 
-  - [ ] 4.3 Update CrcFast\hash_file() function
+  - [x] 4.3 Update CrcFast\hash_file() function
     - Modify function to accept int|CrcFast\Params for algorithm parameter
     - Use crc_fast_checksum_file() for predefined algorithms
     - Use crc_fast_checksum_file_with_params() for custom parameters
     - Maintain existing behavior for all predefined algorithms
     - _Requirements: 3.2, 4.1, 4.2_
 
-  - [ ] 4.4 Update CrcFast\combine() function
+  - [x] 4.4 Update CrcFast\combine() function
     - Modify function to accept int|CrcFast\Params for algorithm parameter
     - Use crc_fast_checksum_combine() for predefined algorithms
     - Use crc_fast_checksum_combine_with_custom_params() for custom parameters

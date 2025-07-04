@@ -97,14 +97,21 @@ static zend_object *php_crc_fast_params_create_object(zend_class_entry *ce)
 }
 
 /* Helper function to format checksum output */
-static inline void php_crc_fast_format_result(INTERNAL_FUNCTION_PARAMETERS, zend_long algorithm, uint64_t result, zend_bool binary)
+static inline void php_crc_fast_format_result(INTERNAL_FUNCTION_PARAMETERS, zend_long algorithm, uint64_t result, zend_bool binary, bool is_custom = false, uint8_t custom_width = 0)
 {
+    bool is_32bit;
+    
+    if (is_custom) {
+        // For custom parameters, use the width from the parameters
+        is_32bit = (custom_width == 32);
+    } else {
+        // For predefined algorithms, determine width based on algorithm constant
+        is_32bit = (algorithm <= PHP_CRC_FAST_CRC32_XFER);
+    }
+
     if (binary) {
         // For binary output, return the raw bytes
-        size_t result_size;
-
-        // Determine if this is a 32-bit or 64-bit algorithm
-        if (algorithm <= PHP_CRC_FAST_CRC32_XFER) {
+        if (is_32bit) {
             // 32-bit CRC
             uint32_t result32 = (uint32_t)result;
             result32 = htonl(result32);
@@ -115,7 +122,7 @@ static inline void php_crc_fast_format_result(INTERNAL_FUNCTION_PARAMETERS, zend
             RETURN_STRINGL((char*)&result, sizeof(result));
         }
     } else {
-        if (algorithm <= PHP_CRC_FAST_CRC32_XFER) {
+        if (is_32bit) {
             // 32-bit CRC
             char checksum_str[9]; // 8 hex digits + null terminator
             snprintf(checksum_str, sizeof(checksum_str), "%08x", (uint32_t)result);
@@ -179,6 +186,27 @@ static inline uint64_t php_crc_fast_reverse_bytes_if_needed(uint64_t result, zen
     return result;
 }
 
+/* Helper function to detect parameter type and extract CrcFastParams if needed */
+static inline bool php_crc_fast_get_params_from_zval(zval *algorithm_zval, zend_long *algorithm_out, CrcFastParams *params_out)
+{
+    if (Z_TYPE_P(algorithm_zval) == IS_LONG) {
+        // It's an integer algorithm constant
+        *algorithm_out = Z_LVAL_P(algorithm_zval);
+        return false; // Not custom parameters
+    } else if (Z_TYPE_P(algorithm_zval) == IS_OBJECT && 
+               instanceof_function(Z_OBJCE_P(algorithm_zval), php_crc_fast_params_ce)) {
+        // It's a CrcFast\Params object
+        php_crc_fast_params_obj *params_obj = Z_CRC_FAST_PARAMS_P(algorithm_zval);
+        *params_out = params_obj->params;
+        *algorithm_out = 0; // Not used for custom parameters
+        return true; // Custom parameters
+    } else {
+        // Invalid type
+        zend_throw_exception(zend_ce_exception, "Algorithm parameter must be an integer constant or CrcFast\\Params object", 0);
+        return false;
+    }
+}
+
 /* {{{ CrcFast\crc32(string $data): int */
 PHP_FUNCTION(CrcFast_crc32)
 {
@@ -196,55 +224,86 @@ PHP_FUNCTION(CrcFast_crc32)
 }
 /* }}} */
 
-/* {{{ CrcFast\hash(int $algorithm, string $data, bool $binary = false): string */
+/* {{{ CrcFast\hash(int|CrcFast\Params $algorithm, string $data, bool $binary = false): string */
 PHP_FUNCTION(CrcFast_hash)
 {
-    zend_long algorithm;
+    zval *algorithm_zval;
     char *data;
     size_t data_len;
     zend_bool binary = 0;
 
     ZEND_PARSE_PARAMETERS_START(3, 3)
-        Z_PARAM_LONG(algorithm)
+        Z_PARAM_ZVAL(algorithm_zval)
         Z_PARAM_STRING(data, data_len)
         Z_PARAM_BOOL(binary)
     ZEND_PARSE_PARAMETERS_END();
 
-    CrcFastAlgorithm algo = php_crc_fast_get_algorithm(algorithm);
-    uint64_t result = crc_fast_checksum(algo, data, data_len);
+    zend_long algorithm;
+    CrcFastParams custom_params;
+    bool is_custom = php_crc_fast_get_params_from_zval(algorithm_zval, &algorithm, &custom_params);
+    
+    if (EG(exception)) {
+        return; // Exception was thrown by helper function
+    }
 
-    // Apply byte reversal if needed
-    result = php_crc_fast_reverse_bytes_if_needed(result, algorithm);
+    uint64_t result;
+    if (is_custom) {
+        // Use custom parameters
+        result = crc_fast_checksum_with_params(custom_params, data, data_len);
+        php_crc_fast_format_result(INTERNAL_FUNCTION_PARAM_PASSTHRU, 0, result, binary, true, custom_params.width);
+    } else {
+        // Use predefined algorithm
+        CrcFastAlgorithm algo = php_crc_fast_get_algorithm(algorithm);
+        result = crc_fast_checksum(algo, data, data_len);
 
-    php_crc_fast_format_result(INTERNAL_FUNCTION_PARAM_PASSTHRU, algorithm, result, binary);
+        // Apply byte reversal if needed
+        result = php_crc_fast_reverse_bytes_if_needed(result, algorithm);
+
+        php_crc_fast_format_result(INTERNAL_FUNCTION_PARAM_PASSTHRU, algorithm, result, binary);
+    }
 }
 /* }}} */
 
-/* {{{ CrcFast\hash_file(int $algorithm, string $filename, bool $binary = false, ?int $chunk_size = null): string */
+/* {{{ CrcFast\hash_file(int|CrcFast\Params $algorithm, string $filename, bool $binary = false, ?int $chunk_size = null): string */
 PHP_FUNCTION(CrcFast_hash_file)
 {
-    zend_long algorithm;
+    zval *algorithm_zval;
     char *filename;
     size_t filename_len;
     zend_bool binary = 0;
     zval *chunk_size_zval = NULL;
 
     ZEND_PARSE_PARAMETERS_START(3, 4)
-        Z_PARAM_LONG(algorithm)
+        Z_PARAM_ZVAL(algorithm_zval)
         Z_PARAM_STRING(filename, filename_len)
         Z_PARAM_BOOL(binary)
         Z_PARAM_OPTIONAL
         Z_PARAM_ZVAL_OR_NULL(chunk_size_zval)
     ZEND_PARSE_PARAMETERS_END();
 
-    CrcFastAlgorithm algo = php_crc_fast_get_algorithm(algorithm);
+    zend_long algorithm;
+    CrcFastParams custom_params;
+    bool is_custom = php_crc_fast_get_params_from_zval(algorithm_zval, &algorithm, &custom_params);
+    
+    if (EG(exception)) {
+        return; // Exception was thrown by helper function
+    }
 
-    uint64_t result = crc_fast_checksum_file(algo, (const uint8_t*)filename, filename_len);
+    uint64_t result;
+    if (is_custom) {
+        // Use custom parameters
+        result = crc_fast_checksum_file_with_params(custom_params, (const uint8_t*)filename, filename_len);
+        php_crc_fast_format_result(INTERNAL_FUNCTION_PARAM_PASSTHRU, 0, result, binary, true, custom_params.width);
+    } else {
+        // Use predefined algorithm
+        CrcFastAlgorithm algo = php_crc_fast_get_algorithm(algorithm);
+        result = crc_fast_checksum_file(algo, (const uint8_t*)filename, filename_len);
 
-    // Apply byte reversal if needed
-    result = php_crc_fast_reverse_bytes_if_needed(result, algorithm);
+        // Apply byte reversal if needed
+        result = php_crc_fast_reverse_bytes_if_needed(result, algorithm);
 
-    php_crc_fast_format_result(INTERNAL_FUNCTION_PARAM_PASSTHRU, algorithm, result, binary);
+        php_crc_fast_format_result(INTERNAL_FUNCTION_PARAM_PASSTHRU, algorithm, result, binary);
+    }
 }
 /* }}} */
 
@@ -277,29 +336,40 @@ PHP_FUNCTION(CrcFast_get_supported_algorithms)
 }
 /* }}} */
 
-/* {{{ CrcFast\combine(int $algorithm, string $checksum1, string $checksum2, int $length2, bool $binary = false): string */
+/* {{{ CrcFast\combine(int|CrcFast\Params $algorithm, string $checksum1, string $checksum2, int $length2, bool $binary = false): string */
 PHP_FUNCTION(CrcFast_combine)
 {
-    zend_long algorithm;
+    zval *algorithm_zval;
     char *checksum1, *checksum2;
     size_t checksum1_len, checksum2_len;
     zend_long length2;
     zend_bool binary = 0;
 
     ZEND_PARSE_PARAMETERS_START(5, 5)
-        Z_PARAM_LONG(algorithm)
+        Z_PARAM_ZVAL(algorithm_zval)
         Z_PARAM_STRING(checksum1, checksum1_len)
         Z_PARAM_STRING(checksum2, checksum2_len)
         Z_PARAM_LONG(length2)
         Z_PARAM_BOOL(binary)
     ZEND_PARSE_PARAMETERS_END();
 
-    CrcFastAlgorithm algo = php_crc_fast_get_algorithm(algorithm);
+    zend_long algorithm;
+    CrcFastParams custom_params;
+    bool is_custom = php_crc_fast_get_params_from_zval(algorithm_zval, &algorithm, &custom_params);
+    
+    if (EG(exception)) {
+        return; // Exception was thrown by helper function
+    }
 
     uint64_t cs1 = 0, cs2 = 0;
 
     // Determine if we're dealing with 32-bit or 64-bit CRC
-    bool is_crc32 = (algorithm <= PHP_CRC_FAST_CRC32_XFER);
+    bool is_crc32;
+    if (is_custom) {
+        is_crc32 = (custom_params.width == 32);
+    } else {
+        is_crc32 = (algorithm <= PHP_CRC_FAST_CRC32_XFER);
+    }
     size_t expected_binary_size = is_crc32 ? 4 : 8;  // 4 bytes for CRC32, 8 bytes for CRC64
     size_t expected_hex_size = is_crc32 ? 8 : 16;    // 8 hex chars for CRC32, 16 for CRC64
 
@@ -394,12 +464,21 @@ PHP_FUNCTION(CrcFast_combine)
         RETURN_FALSE;
     }
 
-    uint64_t result = crc_fast_checksum_combine(algo, cs1, cs2, length2);
+    uint64_t result;
+    if (is_custom) {
+        // Use custom parameters
+        result = crc_fast_checksum_combine_with_custom_params(custom_params, cs1, cs2, length2);
+        php_crc_fast_format_result(INTERNAL_FUNCTION_PARAM_PASSTHRU, 0, result, binary, true, custom_params.width);
+    } else {
+        // Use predefined algorithm
+        CrcFastAlgorithm algo = php_crc_fast_get_algorithm(algorithm);
+        result = crc_fast_checksum_combine(algo, cs1, cs2, length2);
 
-    // Apply byte reversal if needed
-    result = php_crc_fast_reverse_bytes_if_needed(result, algorithm);
+        // Apply byte reversal if needed
+        result = php_crc_fast_reverse_bytes_if_needed(result, algorithm);
 
-    php_crc_fast_format_result(INTERNAL_FUNCTION_PARAM_PASSTHRU, algorithm, result, binary);
+        php_crc_fast_format_result(INTERNAL_FUNCTION_PARAM_PASSTHRU, algorithm, result, binary);
+    }
 }
 /* }}} */
 
