@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. Update stub file with new CrcFast\Params class and function signatures
+- [x] 1. Update stub file with new CrcFast\Params class and function signatures
   - Add CrcFast\Params class definition with constructor and getter methods
   - Update existing function signatures to accept int|CrcFast\Params for algorithm parameter
   - _Requirements: 1.1, 3.1, 6.1, 6.3_

@@ -77,28 +77,128 @@ namespace CrcFast {
     const CRC_64_XZ = 20060;
 
     /**
+     * Custom CRC parameters class for defining custom CRC algorithms.
+     */
+    class Params
+    {
+        /**
+         * @param int        $width   CRC width (32 or 64 bits)
+         * @param int        $poly    CRC polynomial
+         * @param int        $init    Initial CRC value
+         * @param bool       $refin   Reflect input bytes
+         * @param bool       $refout  Reflect output CRC
+         * @param int        $xorout  XOR output with this value
+         * @param int        $check   Expected CRC of "123456789"
+         * @param array|null $keys    Optional pre-computed keys array (23 elements)
+         */
+        public function __construct(
+            int $width,
+            int $poly,
+            int $init,
+            bool $refin,
+            bool $refout,
+            int $xorout,
+            int $check,
+            ?array $keys = null
+        ) {
+        }
+
+        /**
+         * Gets the CRC width.
+         *
+         * @return int
+         */
+        public function getWidth(): int
+        {
+        }
+
+        /**
+         * Gets the CRC polynomial.
+         *
+         * @return int
+         */
+        public function getPoly(): int
+        {
+        }
+
+        /**
+         * Gets the initial CRC value.
+         *
+         * @return int
+         */
+        public function getInit(): int
+        {
+        }
+
+        /**
+         * Gets whether input bytes are reflected.
+         *
+         * @return bool
+         */
+        public function getRefin(): bool
+        {
+        }
+
+        /**
+         * Gets whether output CRC is reflected.
+         *
+         * @return bool
+         */
+        public function getRefout(): bool
+        {
+        }
+
+        /**
+         * Gets the XOR output value.
+         *
+         * @return int
+         */
+        public function getXorout(): int
+        {
+        }
+
+        /**
+         * Gets the expected CRC check value.
+         *
+         * @return int
+         */
+        public function getCheck(): int
+        {
+        }
+
+        /**
+         * Gets the pre-computed keys array.
+         *
+         * @return array
+         */
+        public function getKeys(): array
+        {
+        }
+    }
+
+    /**
      * Calculates the CRC checksum of the given data.
      *
-     * @param int    $algorithm
-     * @param string $data
-     * @param bool   $binary Output binary string or hex?
+     * @param int|Params $algorithm
+     * @param string     $data
+     * @param bool       $binary Output binary string or hex?
      *
      * @return string
      */
-    function hash(int $algorithm, string $data, bool $binary = false): string
+    function hash(int|Params $algorithm, string $data, bool $binary = false): string
     {
     }
 
     /**
      * Calculates the CRC checksum of the given file.
      *
-     * @param int      $algorithm
-     * @param string   $filename
-     * @param bool     $binary Output binary string or hex?
+     * @param int|Params $algorithm
+     * @param string     $filename
+     * @param bool       $binary Output binary string or hex?
      *
      * @return string
      */
-    function hash_file(int $algorithm, string $filename, bool $binary = false): string
+    function hash_file(int|Params $algorithm, string $filename, bool $binary = false): string
     {
     }
 
@@ -114,16 +214,16 @@ namespace CrcFast {
     /**
      * Combines two CRC checksums into one.
      *
-     * @param int    $algorithm
-     * @param string $checksum1 The first checksum to combine (binary or hex)
-     * @param string $checksum2 The second checksum to combine (binary or hex)
-     * @param int    $length2   The length of the _input_ to the second checksum
-     * @param bool   $binary    Output binary string or hex?
+     * @param int|Params $algorithm
+     * @param string     $checksum1 The first checksum to combine (binary or hex)
+     * @param string     $checksum2 The second checksum to combine (binary or hex)
+     * @param int        $length2   The length of the _input_ to the second checksum
+     * @param bool       $binary    Output binary string or hex?
      *
      * @return string
      */
     function combine(
-        int $algorithm,
+        int|Params $algorithm,
         string $checksum1,
         string $checksum2,
         int $length2,
@@ -148,9 +248,9 @@ namespace CrcFast {
     class Digest
     {
         /**
-         * @param int $algorithm
+         * @param int|Params $algorithm
          */
-        public function __construct(int $algorithm)
+        public function __construct(int|Params $algorithm)
         {
         }
 
