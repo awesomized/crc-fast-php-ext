@@ -5,7 +5,7 @@
   - Update existing function signatures to accept int|CrcFast\Params for algorithm parameter
   - _Requirements: 1.1, 3.1, 6.1, 6.3_
 
-- [ ] 2. Regenerate arginfo file from updated stub
+- [x] 2. Regenerate arginfo file from updated stub
   - Run PHP's gen_stub.php to regenerate crc_fast_arginfo.h from the updated stub file
   - Verify that new function signatures and class definitions are properly generated
   - _Requirements: 6.2, 6.4_
