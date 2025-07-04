@@ -10,20 +10,20 @@
   - Verify that new function signatures and class definitions are properly generated
   - _Requirements: 6.2, 6.4_
 
-- [ ] 3. Implement CrcFast\Params class in C extension
-  - [ ] 3.1 Define php_crc_fast_params_obj structure and object handlers
+- [x] 3. Implement CrcFast\Params class in C extension
+  - [x] 3.1 Define php_crc_fast_params_obj structure and object handlers
     - Create structure containing CrcFastParams and zend_object
     - Implement create_object, free_obj, and other standard object handlers
     - _Requirements: 1.1, 5.1_
 
-  - [ ] 3.2 Implement CrcFast\Params constructor
+  - [x] 3.2 Implement CrcFast\Params constructor
     - Parse constructor parameters (width, poly, init, refin, refout, xorout, check, keys)
     - Validate parameter values according to design constraints
     - Create and populate CrcFastParams struct
     - Handle optional keys parameter (generate if null, validate if provided)
     - _Requirements: 1.1, 1.2, 2.2, 5.2_
 
-  - [ ] 3.3 Implement CrcFast\Params getter methods
+  - [x] 3.3 Implement CrcFast\Params getter methods
     - Implement getWidth(), getPoly(), getInit(), getRefin(), getRefout(), getXorout(), getCheck()
     - Implement getKeys() method that always returns the computed keys array
     - _Requirements: 1.1_

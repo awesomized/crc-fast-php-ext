@@ -40,6 +40,10 @@ uint64_t htonll(uint64_t x) {
 zend_class_entry *php_crc_fast_digest_ce;
 static zend_object_handlers php_crc_fast_digest_object_handlers;
 
+/* CrcFast\Params class */
+zend_class_entry *php_crc_fast_params_ce;
+static zend_object_handlers php_crc_fast_params_object_handlers;
+
 /* Free the Digest object */
 static void php_crc_fast_digest_free_obj(zend_object *object)
 {
@@ -64,6 +68,30 @@ static zend_object *php_crc_fast_digest_create_object(zend_class_entry *ce)
     obj->std.handlers = &php_crc_fast_digest_object_handlers;
     obj->digest = NULL;
     obj->algorithm = 0; // Explicitly initialize to 0 to prevent garbage values
+
+    return &obj->std;
+}
+
+/* Free the Params object */
+static void php_crc_fast_params_free_obj(zend_object *object)
+{
+    php_crc_fast_params_obj *obj = php_crc_fast_params_from_obj(object);
+
+    zend_object_std_dtor(&obj->std);
+}
+
+/* Create a new Params object */
+static zend_object *php_crc_fast_params_create_object(zend_class_entry *ce)
+{
+    php_crc_fast_params_obj *obj = (php_crc_fast_params_obj*)ecalloc(1, sizeof(php_crc_fast_params_obj) + zend_object_properties_size(ce));
+
+    zend_object_std_init(&obj->std, ce);
+    object_properties_init(&obj->std, ce);
+
+    obj->std.handlers = &php_crc_fast_params_object_handlers;
+    
+    // Initialize the CrcFastParams struct to zero
+    memset(&obj->params, 0, sizeof(CrcFastParams));
 
     return &obj->std;
 }
@@ -130,6 +158,7 @@ static inline CrcFastAlgorithm php_crc_fast_get_algorithm(zend_long algo) {
 
         default:
             zend_throw_exception(zend_ce_exception, "Invalid algorithm specified", 0);
+            return CrcFastAlgorithm::Crc32IsoHdlc; // Default fallback
     }
 }
 
@@ -522,6 +551,220 @@ PHP_METHOD(CrcFast_Digest, combine)
 }
 /* }}} */
 
+/* {{{ CrcFast\Params::__construct(int $width, int $poly, int $init, bool $refin, bool $refout, int $xorout, int $check, ?array $keys = null) */
+PHP_METHOD(CrcFast_Params, __construct)
+{
+    php_crc_fast_params_obj *obj = Z_CRC_FAST_PARAMS_P(getThis());
+    zend_long width, poly, init, xorout, check;
+    zend_bool refin, refout;
+    zval *keys_array = NULL;
+
+    ZEND_PARSE_PARAMETERS_START(7, 8)
+        Z_PARAM_LONG(width)
+        Z_PARAM_LONG(poly)
+        Z_PARAM_LONG(init)
+        Z_PARAM_BOOL(refin)
+        Z_PARAM_BOOL(refout)
+        Z_PARAM_LONG(xorout)
+        Z_PARAM_LONG(check)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_ARRAY_OR_NULL(keys_array)
+    ZEND_PARSE_PARAMETERS_END();
+
+    // Validate width - only 32 and 64 are supported
+    if (width != 32 && width != 64) {
+        zend_throw_exception_ex(zend_ce_exception, 0, 
+            "Invalid width %ld. Only 32 and 64 bit widths are supported", width);
+        return;
+    }
+
+    // Validate polynomial fits within width
+    uint64_t max_poly = (width == 32) ? 0xFFFFFFFFULL : 0xFFFFFFFFFFFFFFFFULL;
+    if ((uint64_t)poly > max_poly) {
+        zend_throw_exception_ex(zend_ce_exception, 0, 
+            "Polynomial 0x%lx exceeds maximum value for %ld-bit width", poly, width);
+        return;
+    }
+
+    // Validate init value fits within width
+    uint64_t max_init = (width == 32) ? 0xFFFFFFFFULL : 0xFFFFFFFFFFFFFFFFULL;
+    if ((uint64_t)init > max_init) {
+        zend_throw_exception_ex(zend_ce_exception, 0, 
+            "Init value 0x%lx exceeds maximum value for %ld-bit width", init, width);
+        return;
+    }
+
+    // Validate xorout value fits within width
+    uint64_t max_xorout = (width == 32) ? 0xFFFFFFFFULL : 0xFFFFFFFFFFFFFFFFULL;
+    if ((uint64_t)xorout > max_xorout) {
+        zend_throw_exception_ex(zend_ce_exception, 0, 
+            "Xorout value 0x%lx exceeds maximum value for %ld-bit width", xorout, width);
+        return;
+    }
+
+    // Validate check value fits within width
+    uint64_t max_check = (width == 32) ? 0xFFFFFFFFULL : 0xFFFFFFFFFFFFFFFFULL;
+    if ((uint64_t)check > max_check) {
+        zend_throw_exception_ex(zend_ce_exception, 0, 
+            "Check value 0x%lx exceeds maximum value for %ld-bit width", check, width);
+        return;
+    }
+
+    // Set up the CrcFastParams struct
+    obj->params.algorithm = (width == 32) ? CrcFastAlgorithm::Crc32Custom : CrcFastAlgorithm::Crc64Custom;
+    obj->params.width = (uint8_t)width;
+    obj->params.poly = (uint64_t)poly;
+    obj->params.init = (uint64_t)init;
+    obj->params.refin = refin;
+    obj->params.refout = refout;
+    obj->params.xorout = (uint64_t)xorout;
+    obj->params.check = (uint64_t)check;
+
+    // Handle keys parameter
+    if (keys_array && Z_TYPE_P(keys_array) == IS_ARRAY) {
+        // Validate keys array has exactly 23 elements
+        if (zend_hash_num_elements(Z_ARRVAL_P(keys_array)) != 23) {
+            zend_throw_exception_ex(zend_ce_exception, 0, 
+                "Keys array must contain exactly 23 elements, got %d", 
+                zend_hash_num_elements(Z_ARRVAL_P(keys_array)));
+            return;
+        }
+
+        // Copy keys from PHP array to C array
+        zval *key_val;
+        int i = 0;
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(keys_array), key_val) {
+            if (Z_TYPE_P(key_val) != IS_LONG) {
+                zend_throw_exception_ex(zend_ce_exception, 0, 
+                    "All keys must be integers, element %d is not an integer", i);
+                return;
+            }
+            obj->params.keys[i] = (uint64_t)Z_LVAL_P(key_val);
+            i++;
+        } ZEND_HASH_FOREACH_END();
+    } else {
+        // Generate keys using the C library helper function
+        CrcFastParams temp_params = crc_fast_get_custom_params(
+            "", // name is not used for key generation
+            (uint8_t)width,
+            (uint64_t)poly,
+            (uint64_t)init,
+            refin,
+            (uint64_t)xorout,
+            (uint64_t)check
+        );
+        
+        // Copy the generated keys
+        memcpy(obj->params.keys, temp_params.keys, sizeof(obj->params.keys));
+    }
+
+    // Validate the parameters by checking if they produce the expected check value
+    // This is done by computing CRC of "123456789" and comparing with check parameter
+    const char *test_data = "123456789";
+    uint64_t computed_check = crc_fast_checksum_with_params(obj->params, test_data, 9);
+    
+    if (computed_check != (uint64_t)check) {
+        zend_throw_exception_ex(zend_ce_exception, 0, 
+            "Parameters validation failed: computed check 0x%016" PRIx64 " does not match expected check 0x%llx", 
+            computed_check, (unsigned long long)check);
+        return;
+    }
+}
+/* }}} */
+
+/* {{{ CrcFast\Params::getWidth(): int */
+PHP_METHOD(CrcFast_Params, getWidth)
+{
+    php_crc_fast_params_obj *obj = Z_CRC_FAST_PARAMS_P(getThis());
+
+    ZEND_PARSE_PARAMETERS_NONE();
+
+    RETURN_LONG((zend_long)obj->params.width);
+}
+/* }}} */
+
+/* {{{ CrcFast\Params::getPoly(): int */
+PHP_METHOD(CrcFast_Params, getPoly)
+{
+    php_crc_fast_params_obj *obj = Z_CRC_FAST_PARAMS_P(getThis());
+
+    ZEND_PARSE_PARAMETERS_NONE();
+
+    RETURN_LONG((zend_long)obj->params.poly);
+}
+/* }}} */
+
+/* {{{ CrcFast\Params::getInit(): int */
+PHP_METHOD(CrcFast_Params, getInit)
+{
+    php_crc_fast_params_obj *obj = Z_CRC_FAST_PARAMS_P(getThis());
+
+    ZEND_PARSE_PARAMETERS_NONE();
+
+    RETURN_LONG((zend_long)obj->params.init);
+}
+/* }}} */
+
+/* {{{ CrcFast\Params::getRefin(): bool */
+PHP_METHOD(CrcFast_Params, getRefin)
+{
+    php_crc_fast_params_obj *obj = Z_CRC_FAST_PARAMS_P(getThis());
+
+    ZEND_PARSE_PARAMETERS_NONE();
+
+    RETURN_BOOL(obj->params.refin);
+}
+/* }}} */
+
+/* {{{ CrcFast\Params::getRefout(): bool */
+PHP_METHOD(CrcFast_Params, getRefout)
+{
+    php_crc_fast_params_obj *obj = Z_CRC_FAST_PARAMS_P(getThis());
+
+    ZEND_PARSE_PARAMETERS_NONE();
+
+    RETURN_BOOL(obj->params.refout);
+}
+/* }}} */
+
+/* {{{ CrcFast\Params::getXorout(): int */
+PHP_METHOD(CrcFast_Params, getXorout)
+{
+    php_crc_fast_params_obj *obj = Z_CRC_FAST_PARAMS_P(getThis());
+
+    ZEND_PARSE_PARAMETERS_NONE();
+
+    RETURN_LONG((zend_long)obj->params.xorout);
+}
+/* }}} */
+
+/* {{{ CrcFast\Params::getCheck(): int */
+PHP_METHOD(CrcFast_Params, getCheck)
+{
+    php_crc_fast_params_obj *obj = Z_CRC_FAST_PARAMS_P(getThis());
+
+    ZEND_PARSE_PARAMETERS_NONE();
+
+    RETURN_LONG((zend_long)obj->params.check);
+}
+/* }}} */
+
+/* {{{ CrcFast\Params::getKeys(): array */
+PHP_METHOD(CrcFast_Params, getKeys)
+{
+    php_crc_fast_params_obj *obj = Z_CRC_FAST_PARAMS_P(getThis());
+
+    ZEND_PARSE_PARAMETERS_NONE();
+
+    array_init(return_value);
+
+    // Add all 23 keys to the array
+    for (int i = 0; i < 23; i++) {
+        add_index_long(return_value, i, (zend_long)obj->params.keys[i]);
+    }
+}
+/* }}} */
+
 /* {{{ PHP_RINIT_FUNCTION */
 PHP_RINIT_FUNCTION(crc_fast)
 {
@@ -564,6 +807,18 @@ PHP_MINIT_FUNCTION(crc_fast)
     php_crc_fast_digest_object_handlers.offset = XtOffsetOf(php_crc_fast_digest_obj, std);
     php_crc_fast_digest_object_handlers.free_obj = php_crc_fast_digest_free_obj;
     php_crc_fast_digest_object_handlers.clone_obj = NULL; // No cloning support
+
+    // Register the Params class using the auto-generated function
+    php_crc_fast_params_ce = register_class_CrcFast_Params();
+
+    // Set up the create_object handler for the class
+    php_crc_fast_params_ce->create_object = php_crc_fast_params_create_object;
+
+    // Initialize the object handlers
+    memcpy(&php_crc_fast_params_object_handlers, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
+    php_crc_fast_params_object_handlers.offset = XtOffsetOf(php_crc_fast_params_obj, std);
+    php_crc_fast_params_object_handlers.free_obj = php_crc_fast_params_free_obj;
+    php_crc_fast_params_object_handlers.clone_obj = NULL; // No cloning support
 
     return SUCCESS;
 }

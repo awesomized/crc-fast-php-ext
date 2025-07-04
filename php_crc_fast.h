@@ -32,6 +32,18 @@ static inline php_crc_fast_digest_obj *php_crc_fast_digest_from_obj(zend_object 
 
 #define Z_CRC_FAST_DIGEST_P(zv) php_crc_fast_digest_from_obj(Z_OBJ_P(zv))
 
+/* Define the CrcFast\Params class */
+typedef struct _php_crc_fast_params_obj {
+    CrcFastParams params;
+    zend_object std;
+} php_crc_fast_params_obj;
+
+static inline php_crc_fast_params_obj *php_crc_fast_params_from_obj(zend_object *obj) {
+    return (php_crc_fast_params_obj*)((char*)(obj) - XtOffsetOf(php_crc_fast_params_obj, std));
+}
+
+#define Z_CRC_FAST_PARAMS_P(zv) php_crc_fast_params_from_obj(Z_OBJ_P(zv))
+
 /* Algorithm constants that will be exposed to PHP, with room for expansion */
 // CRC-32
 #define PHP_CRC_FAST_CRC32_AIXM       10000
