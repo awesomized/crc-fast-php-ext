@@ -23,6 +23,8 @@ ZEND_TSRMLS_CACHE_EXTERN()
 typedef struct _php_crc_fast_digest_obj {
     CrcFastDigestHandle *digest;
     zend_long algorithm;
+    bool is_custom;  // Whether using custom parameters
+    CrcFastParams custom_params;  // Custom parameters if is_custom is true
     zend_object std;  // MUST be last
 } php_crc_fast_digest_obj;
 

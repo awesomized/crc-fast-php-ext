@@ -68,6 +68,8 @@ static zend_object *php_crc_fast_digest_create_object(zend_class_entry *ce)
     obj->std.handlers = &php_crc_fast_digest_object_handlers;
     obj->digest = NULL;
     obj->algorithm = 0; // Explicitly initialize to 0 to prevent garbage values
+    obj->is_custom = false; // Initialize to false
+    memset(&obj->custom_params, 0, sizeof(CrcFastParams)); // Initialize custom params to zero
 
     return &obj->std;
 }
@@ -482,14 +484,14 @@ PHP_FUNCTION(CrcFast_combine)
 }
 /* }}} */
 
-/* {{{ CrcFast\Digest::__construct(int $algorithm) */
+/* {{{ CrcFast\Digest::__construct(int|CrcFast\Params $algorithm) */
 PHP_METHOD(CrcFast_Digest, __construct)
 {
     php_crc_fast_digest_obj *obj = Z_CRC_FAST_DIGEST_P(getThis());
-    zend_long algorithm;
+    zval *algorithm_zval;
 
     ZEND_PARSE_PARAMETERS_START(1, 1)
-        Z_PARAM_LONG(algorithm)
+        Z_PARAM_ZVAL(algorithm_zval)
     ZEND_PARSE_PARAMETERS_END();
 
     if (!obj) {
@@ -497,15 +499,35 @@ PHP_METHOD(CrcFast_Digest, __construct)
         return;
     }
 
-    CrcFastAlgorithm algo = php_crc_fast_get_algorithm(algorithm);
-
     // Free previous digest if it exists
     if (obj->digest) {
         crc_fast_digest_free(obj->digest);
+        obj->digest = NULL;
     }
 
-    obj->digest = crc_fast_digest_new(algo);
-    obj->algorithm = algorithm;  // Store algorithm ID explicitly
+    zend_long algorithm;
+    CrcFastParams custom_params;
+    bool is_custom = php_crc_fast_get_params_from_zval(algorithm_zval, &algorithm, &custom_params);
+    
+    if (EG(exception)) {
+        return; // Exception was thrown by helper function
+    }
+
+    if (is_custom) {
+        // Use custom parameters
+        obj->digest = crc_fast_digest_new_with_params(custom_params);
+        obj->is_custom = true;
+        obj->custom_params = custom_params;
+        obj->algorithm = 0; // Not used for custom parameters
+    } else {
+        // Use predefined algorithm
+        CrcFastAlgorithm algo = php_crc_fast_get_algorithm(algorithm);
+        obj->digest = crc_fast_digest_new(algo);
+        obj->is_custom = false;
+        obj->algorithm = algorithm;
+        // Initialize custom_params to zero for safety
+        memset(&obj->custom_params, 0, sizeof(CrcFastParams));
+    }
 
     if (!obj->digest) {
         zend_throw_exception(zend_ce_exception, "Failed to create digest", 0);
@@ -554,11 +576,15 @@ PHP_METHOD(CrcFast_Digest, finalize)
 
     uint64_t result = crc_fast_digest_finalize(obj->digest);
 
-    // Apply byte reversal if needed
-    result = php_crc_fast_reverse_bytes_if_needed(result, obj->algorithm);
-
-    // Format and return the result
-    php_crc_fast_format_result(INTERNAL_FUNCTION_PARAM_PASSTHRU, obj->algorithm, result, binary);
+    if (obj->is_custom) {
+        // Use custom parameter formatting
+        php_crc_fast_format_result(INTERNAL_FUNCTION_PARAM_PASSTHRU, 0, result, binary, true, obj->custom_params.width);
+    } else {
+        // Apply byte reversal if needed for predefined algorithms
+        result = php_crc_fast_reverse_bytes_if_needed(result, obj->algorithm);
+        // Format and return the result using predefined algorithm formatting
+        php_crc_fast_format_result(INTERNAL_FUNCTION_PARAM_PASSTHRU, obj->algorithm, result, binary);
+    }
 }
 /* }}} */
 
@@ -599,10 +625,14 @@ PHP_METHOD(CrcFast_Digest, finalizeReset)
 
     uint64_t result = crc_fast_digest_finalize_reset(obj->digest);
 
-    // Apply byte reversal if needed
-    result = php_crc_fast_reverse_bytes_if_needed(result, obj->algorithm);
-
-    php_crc_fast_format_result(INTERNAL_FUNCTION_PARAM_PASSTHRU, obj->algorithm, result, binary);
+    if (obj->is_custom) {
+        // Use custom parameter formatting
+        php_crc_fast_format_result(INTERNAL_FUNCTION_PARAM_PASSTHRU, 0, result, binary, true, obj->custom_params.width);
+    } else {
+        // Apply byte reversal if needed for predefined algorithms
+        result = php_crc_fast_reverse_bytes_if_needed(result, obj->algorithm);
+        php_crc_fast_format_result(INTERNAL_FUNCTION_PARAM_PASSTHRU, obj->algorithm, result, binary);
+    }
 }
 /* }}} */
 

@@ -30,12 +30,15 @@ var_dump($combined);
 $first = new CrcFast\Digest(CrcFast\CRC_32_ISCSI);
 $first->update('1234');
 
+$first->finalize(false);
+
 $second = new CrcFast\Digest(CrcFast\CRC_32_ISCSI);
 $second->update('56789');
 
 $first->combine($second);
 
 var_dump($first->finalize(false));
+
 
 // checksum CRC-64, binary inputs
 $combined = CrcFast\combine(

@@ -57,15 +57,15 @@
     - Maintain existing checksum parsing logic for both binary and hex inputs
     - _Requirements: 3.3, 4.1, 4.2_
 
-- [ ] 5. Update CrcFast\Digest class to support custom parameters
-  - [ ] 5.1 Modify Digest constructor
+- [x] 5. Update CrcFast\Digest class to support custom parameters
+  - [x] 5.1 Modify Digest constructor
     - Update constructor to accept int|CrcFast\Params for algorithm parameter
     - Use crc_fast_digest_new() for predefined algorithms
     - Use crc_fast_digest_new_with_params() for custom parameters
     - Store parameter type information for later use in formatting
     - _Requirements: 3.4, 4.1, 4.2_
 
-  - [ ] 5.2 Update result formatting for custom parameters
+  - [x] 5.2 Update result formatting for custom parameters
     - Modify php_crc_fast_format_result() to handle custom parameters
     - Determine output width (32 or 64 bit) from custom parameters
     - Ensure binary and hex output formats work correctly for custom algorithms
