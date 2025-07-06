@@ -492,6 +492,11 @@ PHP_METHOD(CrcFast_Digest, __construct)
         Z_PARAM_LONG(algorithm)
     ZEND_PARSE_PARAMETERS_END();
 
+    if (!obj) {
+        zend_throw_exception(zend_ce_exception, "Failed to get object", 0);
+        return;
+    }
+
     CrcFastAlgorithm algo = php_crc_fast_get_algorithm(algorithm);
 
     // Free previous digest if it exists
@@ -872,7 +877,7 @@ PHP_MINFO_FUNCTION(crc_fast)
 /* {{{ PHP_MINIT_FUNCTION */
 PHP_MINIT_FUNCTION(crc_fast)
 {
-// Register constants and symbols
+    // Register constants and symbols
     register_crc_fast_symbols(0);
 
     // Register the Digest class using the auto-generated function
@@ -883,9 +888,11 @@ PHP_MINIT_FUNCTION(crc_fast)
 
     // Initialize the object handlers
     memcpy(&php_crc_fast_digest_object_handlers, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
-    php_crc_fast_digest_object_handlers.offset = XtOffsetOf(php_crc_fast_digest_obj, std);
+    
+    // With std first, offset should be 0
+    php_crc_fast_digest_object_handlers.offset = offsetof(php_crc_fast_digest_obj, std);
     php_crc_fast_digest_object_handlers.free_obj = php_crc_fast_digest_free_obj;
-    php_crc_fast_digest_object_handlers.clone_obj = NULL; // No cloning support
+    php_crc_fast_digest_object_handlers.clone_obj = NULL;
 
     // Register the Params class using the auto-generated function
     php_crc_fast_params_ce = register_class_CrcFast_Params();
