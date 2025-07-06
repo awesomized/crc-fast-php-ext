@@ -6,6 +6,9 @@
 - **ALWAYS** run tests with: `NO_INTERACTION=1 make test`
 - **NEVER** use `php run-tests.php` directly
 - **NEVER** use `make test` without `NO_INTERACTION=1`
+- **ALWAYS** write tests in the `tests/` directory using `.phpt` format
+- **ALWAYS** follow the existing test architecture and naming conventions
+- **NEVER** create tests outside the `tests/` directory
 
 ### Code Generation
 - **ALWAYS** regenerate arginfo after modifying stub files: `php build/gen_stub.php crc_fast.stub.php`
@@ -25,3 +28,11 @@
 1. Always run `NO_INTERACTION=1 make test` to ensure existing functionality works
 2. After making changes, rebuild and test again
 3. Never assume tests pass without running them properly
+
+## Test Writing Guidelines
+- All tests must be written as `.phpt` files in the `tests/` directory
+- Follow the existing test structure: `--TEST--`, `--FILE--`, `--EXPECT--` sections
+- Test file names should be descriptive and follow existing patterns
+- Always test both success and error cases
+- Include tests for parameter validation and error handling
+- Run tests after writing them to ensure they work correctly
