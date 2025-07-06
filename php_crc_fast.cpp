@@ -166,7 +166,8 @@ static inline CrcFastAlgorithm php_crc_fast_get_algorithm(zend_long algo) {
         case PHP_CRC_FAST_CRC32_PHP:       return CrcFastAlgorithm::Crc32Bzip2;
 
         default:
-            zend_throw_exception(zend_ce_exception, "Invalid algorithm specified", 0);
+            zend_throw_exception_ex(zend_ce_exception, 0, 
+                "Invalid algorithm constant %ld. Use CrcFast\\get_supported_algorithms() to see valid values", algo);
             return CrcFastAlgorithm::Crc32IsoHdlc; // Default fallback
     }
 }
@@ -199,12 +200,18 @@ static inline bool php_crc_fast_get_params_from_zval(zval *algorithm_zval, zend_
                instanceof_function(Z_OBJCE_P(algorithm_zval), php_crc_fast_params_ce)) {
         // It's a CrcFast\Params object
         php_crc_fast_params_obj *params_obj = Z_CRC_FAST_PARAMS_P(algorithm_zval);
+        if (!params_obj) {
+            zend_throw_exception(zend_ce_exception, "Invalid CrcFast\\Params object", 0);
+            return false;
+        }
         *params_out = params_obj->params;
         *algorithm_out = 0; // Not used for custom parameters
         return true; // Custom parameters
     } else {
-        // Invalid type
-        zend_throw_exception(zend_ce_exception, "Algorithm parameter must be an integer constant or CrcFast\\Params object", 0);
+        // Invalid type - provide more descriptive error message
+        const char *type_name = zend_get_type_by_const(Z_TYPE_P(algorithm_zval));
+        zend_throw_exception_ex(zend_ce_exception, 0, 
+            "Algorithm parameter must be an integer constant or CrcFast\\Params object, %s given", type_name);
         return false;
     }
 }
@@ -240,6 +247,12 @@ PHP_FUNCTION(CrcFast_hash)
         Z_PARAM_BOOL(binary)
     ZEND_PARSE_PARAMETERS_END();
 
+    // Validate data parameter
+    if (!data) {
+        zend_throw_exception(zend_ce_exception, "Data parameter cannot be null", 0);
+        return;
+    }
+
     zend_long algorithm;
     CrcFastParams custom_params;
     bool is_custom = php_crc_fast_get_params_from_zval(algorithm_zval, &algorithm, &custom_params);
@@ -250,13 +263,28 @@ PHP_FUNCTION(CrcFast_hash)
 
     uint64_t result;
     if (is_custom) {
-        // Use custom parameters
-        result = crc_fast_checksum_with_params(custom_params, data, data_len);
+        // Use custom parameters - handle potential C library errors
+        try {
+            result = crc_fast_checksum_with_params(custom_params, data, data_len);
+        } catch (...) {
+            zend_throw_exception(zend_ce_exception, "Failed to compute CRC checksum with custom parameters", 0);
+            return;
+        }
         php_crc_fast_format_result(INTERNAL_FUNCTION_PARAM_PASSTHRU, 0, result, binary, true, custom_params.width);
     } else {
-        // Use predefined algorithm
+        // Use predefined algorithm - handle potential C library errors
         CrcFastAlgorithm algo = php_crc_fast_get_algorithm(algorithm);
-        result = crc_fast_checksum(algo, data, data_len);
+        if (EG(exception)) {
+            return; // Exception was thrown by get_algorithm
+        }
+        
+        try {
+            result = crc_fast_checksum(algo, data, data_len);
+        } catch (...) {
+            zend_throw_exception_ex(zend_ce_exception, 0, 
+                "Failed to compute CRC checksum for algorithm %ld", algorithm);
+            return;
+        }
 
         // Apply byte reversal if needed
         result = php_crc_fast_reverse_bytes_if_needed(result, algorithm);
@@ -283,6 +311,18 @@ PHP_FUNCTION(CrcFast_hash_file)
         Z_PARAM_ZVAL_OR_NULL(chunk_size_zval)
     ZEND_PARSE_PARAMETERS_END();
 
+    // Validate filename parameter
+    if (!filename || filename_len == 0) {
+        zend_throw_exception(zend_ce_exception, "Filename cannot be empty", 0);
+        return;
+    }
+
+    // Check if file exists and is readable
+    if (php_check_open_basedir(filename)) {
+        zend_throw_exception_ex(zend_ce_exception, 0, "File '%s' is not within the allowed path(s)", filename);
+        return;
+    }
+
     zend_long algorithm;
     CrcFastParams custom_params;
     bool is_custom = php_crc_fast_get_params_from_zval(algorithm_zval, &algorithm, &custom_params);
@@ -293,13 +333,29 @@ PHP_FUNCTION(CrcFast_hash_file)
 
     uint64_t result;
     if (is_custom) {
-        // Use custom parameters
-        result = crc_fast_checksum_file_with_params(custom_params, (const uint8_t*)filename, filename_len);
+        // Use custom parameters - handle potential C library errors
+        try {
+            result = crc_fast_checksum_file_with_params(custom_params, (const uint8_t*)filename, filename_len);
+        } catch (...) {
+            zend_throw_exception_ex(zend_ce_exception, 0, 
+                "Failed to compute CRC checksum for file '%s' with custom parameters", filename);
+            return;
+        }
         php_crc_fast_format_result(INTERNAL_FUNCTION_PARAM_PASSTHRU, 0, result, binary, true, custom_params.width);
     } else {
-        // Use predefined algorithm
+        // Use predefined algorithm - handle potential C library errors
         CrcFastAlgorithm algo = php_crc_fast_get_algorithm(algorithm);
-        result = crc_fast_checksum_file(algo, (const uint8_t*)filename, filename_len);
+        if (EG(exception)) {
+            return; // Exception was thrown by get_algorithm
+        }
+        
+        try {
+            result = crc_fast_checksum_file(algo, (const uint8_t*)filename, filename_len);
+        } catch (...) {
+            zend_throw_exception_ex(zend_ce_exception, 0, 
+                "Failed to compute CRC checksum for file '%s' with algorithm %ld", filename, algorithm);
+            return;
+        }
 
         // Apply byte reversal if needed
         result = php_crc_fast_reverse_bytes_if_needed(result, algorithm);
@@ -354,6 +410,18 @@ PHP_FUNCTION(CrcFast_combine)
         Z_PARAM_LONG(length2)
         Z_PARAM_BOOL(binary)
     ZEND_PARSE_PARAMETERS_END();
+
+    // Validate parameters
+    if (!checksum1 || !checksum2) {
+        zend_throw_exception(zend_ce_exception, "Checksum parameters cannot be null", 0);
+        return;
+    }
+
+    if (length2 < 0) {
+        zend_throw_exception_ex(zend_ce_exception, 0, 
+            "Length parameter must be non-negative, got %ld", length2);
+        return;
+    }
 
     zend_long algorithm;
     CrcFastParams custom_params;
@@ -468,13 +536,28 @@ PHP_FUNCTION(CrcFast_combine)
 
     uint64_t result;
     if (is_custom) {
-        // Use custom parameters
-        result = crc_fast_checksum_combine_with_custom_params(custom_params, cs1, cs2, length2);
+        // Use custom parameters - handle potential C library errors
+        try {
+            result = crc_fast_checksum_combine_with_custom_params(custom_params, cs1, cs2, length2);
+        } catch (...) {
+            zend_throw_exception(zend_ce_exception, "Failed to combine CRC checksums with custom parameters", 0);
+            return;
+        }
         php_crc_fast_format_result(INTERNAL_FUNCTION_PARAM_PASSTHRU, 0, result, binary, true, custom_params.width);
     } else {
-        // Use predefined algorithm
+        // Use predefined algorithm - handle potential C library errors
         CrcFastAlgorithm algo = php_crc_fast_get_algorithm(algorithm);
-        result = crc_fast_checksum_combine(algo, cs1, cs2, length2);
+        if (EG(exception)) {
+            return; // Exception was thrown by get_algorithm
+        }
+        
+        try {
+            result = crc_fast_checksum_combine(algo, cs1, cs2, length2);
+        } catch (...) {
+            zend_throw_exception_ex(zend_ce_exception, 0, 
+                "Failed to combine CRC checksums for algorithm %ld", algorithm);
+            return;
+        }
 
         // Apply byte reversal if needed
         result = php_crc_fast_reverse_bytes_if_needed(result, algorithm);
@@ -495,7 +578,7 @@ PHP_METHOD(CrcFast_Digest, __construct)
     ZEND_PARSE_PARAMETERS_END();
 
     if (!obj) {
-        zend_throw_exception(zend_ce_exception, "Failed to get object", 0);
+        zend_throw_exception(zend_ce_exception, "Failed to initialize Digest object", 0);
         return;
     }
 
@@ -514,23 +597,47 @@ PHP_METHOD(CrcFast_Digest, __construct)
     }
 
     if (is_custom) {
-        // Use custom parameters
-        obj->digest = crc_fast_digest_new_with_params(custom_params);
+        // Use custom parameters - handle potential C library errors
+        try {
+            obj->digest = crc_fast_digest_new_with_params(custom_params);
+        } catch (...) {
+            zend_throw_exception(zend_ce_exception, "Failed to create digest with custom parameters", 0);
+            return;
+        }
+        
+        if (!obj->digest) {
+            zend_throw_exception(zend_ce_exception, "C library failed to create digest with custom parameters", 0);
+            return;
+        }
+        
         obj->is_custom = true;
         obj->custom_params = custom_params;
         obj->algorithm = 0; // Not used for custom parameters
     } else {
-        // Use predefined algorithm
+        // Use predefined algorithm - handle potential C library errors
         CrcFastAlgorithm algo = php_crc_fast_get_algorithm(algorithm);
-        obj->digest = crc_fast_digest_new(algo);
+        if (EG(exception)) {
+            return; // Exception was thrown by get_algorithm
+        }
+        
+        try {
+            obj->digest = crc_fast_digest_new(algo);
+        } catch (...) {
+            zend_throw_exception_ex(zend_ce_exception, 0, 
+                "Failed to create digest for algorithm %ld", algorithm);
+            return;
+        }
+        
+        if (!obj->digest) {
+            zend_throw_exception_ex(zend_ce_exception, 0, 
+                "C library failed to create digest for algorithm %ld", algorithm);
+            return;
+        }
+        
         obj->is_custom = false;
         obj->algorithm = algorithm;
         // Initialize custom_params to zero for safety
         memset(&obj->custom_params, 0, sizeof(CrcFastParams));
-    }
-
-    if (!obj->digest) {
-        zend_throw_exception(zend_ce_exception, "Failed to create digest", 0);
     }
 }
 /* }}} */
@@ -546,12 +653,29 @@ PHP_METHOD(CrcFast_Digest, update)
         Z_PARAM_STRING(data, data_len)
     ZEND_PARSE_PARAMETERS_END();
 
-    if (!obj->digest) {
-        zend_throw_exception(zend_ce_exception, "Digest object not initialized", 0);
+    if (!obj) {
+        zend_throw_exception(zend_ce_exception, "Invalid Digest object", 0);
         return;
     }
 
-    crc_fast_digest_update(obj->digest, data, data_len);
+    if (!obj->digest) {
+        zend_throw_exception(zend_ce_exception, "Digest object not initialized. Call constructor first", 0);
+        return;
+    }
+
+    // Validate data parameter
+    if (!data) {
+        zend_throw_exception(zend_ce_exception, "Data parameter cannot be null", 0);
+        return;
+    }
+
+    // Handle potential C library errors
+    try {
+        crc_fast_digest_update(obj->digest, data, data_len);
+    } catch (...) {
+        zend_throw_exception(zend_ce_exception, "Failed to update digest with data", 0);
+        return;
+    }
 
     // Return $this for method chaining
     RETURN_ZVAL(getThis(), 1, 0);
@@ -569,12 +693,23 @@ PHP_METHOD(CrcFast_Digest, finalize)
         Z_PARAM_BOOL(binary)
     ZEND_PARSE_PARAMETERS_END();
 
-    if (!obj->digest) {
-        zend_throw_exception(zend_ce_exception, "Digest object not initialized", 0);
+    if (!obj) {
+        zend_throw_exception(zend_ce_exception, "Invalid Digest object", 0);
         return;
     }
 
-    uint64_t result = crc_fast_digest_finalize(obj->digest);
+    if (!obj->digest) {
+        zend_throw_exception(zend_ce_exception, "Digest object not initialized. Call constructor first", 0);
+        return;
+    }
+
+    uint64_t result;
+    try {
+        result = crc_fast_digest_finalize(obj->digest);
+    } catch (...) {
+        zend_throw_exception(zend_ce_exception, "Failed to finalize digest", 0);
+        return;
+    }
 
     if (obj->is_custom) {
         // Use custom parameter formatting
@@ -595,12 +730,22 @@ PHP_METHOD(CrcFast_Digest, reset)
 
     ZEND_PARSE_PARAMETERS_NONE();
 
-    if (!obj->digest) {
-        zend_throw_exception(zend_ce_exception, "Digest object not initialized", 0);
+    if (!obj) {
+        zend_throw_exception(zend_ce_exception, "Invalid Digest object", 0);
         return;
     }
 
-    crc_fast_digest_reset(obj->digest);
+    if (!obj->digest) {
+        zend_throw_exception(zend_ce_exception, "Digest object not initialized. Call constructor first", 0);
+        return;
+    }
+
+    try {
+        crc_fast_digest_reset(obj->digest);
+    } catch (...) {
+        zend_throw_exception(zend_ce_exception, "Failed to reset digest", 0);
+        return;
+    }
 
     // Return $this for method chaining
     RETURN_ZVAL(getThis(), 1, 0);
@@ -618,12 +763,23 @@ PHP_METHOD(CrcFast_Digest, finalizeReset)
         Z_PARAM_BOOL(binary)
     ZEND_PARSE_PARAMETERS_END();
 
-    if (!obj->digest) {
-        zend_throw_exception(zend_ce_exception, "Digest object not initialized", 0);
+    if (!obj) {
+        zend_throw_exception(zend_ce_exception, "Invalid Digest object", 0);
         return;
     }
 
-    uint64_t result = crc_fast_digest_finalize_reset(obj->digest);
+    if (!obj->digest) {
+        zend_throw_exception(zend_ce_exception, "Digest object not initialized. Call constructor first", 0);
+        return;
+    }
+
+    uint64_t result;
+    try {
+        result = crc_fast_digest_finalize_reset(obj->digest);
+    } catch (...) {
+        zend_throw_exception(zend_ce_exception, "Failed to finalize and reset digest", 0);
+        return;
+    }
 
     if (obj->is_custom) {
         // Use custom parameter formatting
@@ -647,18 +803,33 @@ PHP_METHOD(CrcFast_Digest, combine)
         Z_PARAM_OBJECT_OF_CLASS(other_zval, php_crc_fast_digest_ce)
     ZEND_PARSE_PARAMETERS_END();
 
+    if (!obj) {
+        zend_throw_exception(zend_ce_exception, "Invalid Digest object", 0);
+        return;
+    }
+
     if (!obj->digest) {
-        zend_throw_exception(zend_ce_exception, "Digest object not initialized", 0);
+        zend_throw_exception(zend_ce_exception, "Digest object not initialized. Call constructor first", 0);
         return;
     }
 
     other_obj = Z_CRC_FAST_DIGEST_P(other_zval);
-    if (!other_obj->digest) {
-        zend_throw_exception(zend_ce_exception, "Other digest object not initialized", 0);
+    if (!other_obj) {
+        zend_throw_exception(zend_ce_exception, "Invalid other Digest object", 0);
         return;
     }
 
-    crc_fast_digest_combine(obj->digest, other_obj->digest);
+    if (!other_obj->digest) {
+        zend_throw_exception(zend_ce_exception, "Other digest object not initialized. Call constructor first", 0);
+        return;
+    }
+
+    try {
+        crc_fast_digest_combine(obj->digest, other_obj->digest);
+    } catch (...) {
+        zend_throw_exception(zend_ce_exception, "Failed to combine digest objects", 0);
+        return;
+    }
 
     // Return $this for method chaining
     RETURN_ZVAL(getThis(), 1, 0);
@@ -689,6 +860,31 @@ PHP_METHOD(CrcFast_Params, __construct)
     if (width != 32 && width != 64) {
         zend_throw_exception_ex(zend_ce_exception, 0, 
             "Invalid width %ld. Only 32 and 64 bit widths are supported", width);
+        return;
+    }
+
+    // Validate parameters are not negative
+    if (poly < 0) {
+        zend_throw_exception_ex(zend_ce_exception, 0, 
+            "Polynomial value %ld cannot be negative", poly);
+        return;
+    }
+
+    if (init < 0) {
+        zend_throw_exception_ex(zend_ce_exception, 0, 
+            "Init value %ld cannot be negative", init);
+        return;
+    }
+
+    if (xorout < 0) {
+        zend_throw_exception_ex(zend_ce_exception, 0, 
+            "Xorout value %ld cannot be negative", xorout);
+        return;
+    }
+
+    if (check < 0) {
+        zend_throw_exception_ex(zend_ce_exception, 0, 
+            "Check value %ld cannot be negative", check);
         return;
     }
 
@@ -753,20 +949,34 @@ PHP_METHOD(CrcFast_Params, __construct)
                     "All keys must be integers, element %d is not an integer", i);
                 return;
             }
-            obj->params.keys[i] = (uint64_t)Z_LVAL_P(key_val);
+            
+            zend_long key_value = Z_LVAL_P(key_val);
+            if (key_value < 0) {
+                zend_throw_exception_ex(zend_ce_exception, 0, 
+                    "Key values cannot be negative, element %d has value %ld", i, key_value);
+                return;
+            }
+            
+            obj->params.keys[i] = (uint64_t)key_value;
             i++;
         } ZEND_HASH_FOREACH_END();
     } else {
-        // Generate keys using the C library helper function
-        CrcFastParams temp_params = crc_fast_get_custom_params(
-            "", // name is not used for key generation
-            (uint8_t)width,
-            (uint64_t)poly,
-            (uint64_t)init,
-            refin,
-            (uint64_t)xorout,
-            (uint64_t)check
-        );
+        // Generate keys using the C library helper function - handle potential errors
+        CrcFastParams temp_params;
+        try {
+            temp_params = crc_fast_get_custom_params(
+                "", // name is not used for key generation
+                (uint8_t)width,
+                (uint64_t)poly,
+                (uint64_t)init,
+                refin,
+                (uint64_t)xorout,
+                (uint64_t)check
+            );
+        } catch (...) {
+            zend_throw_exception(zend_ce_exception, "Failed to generate keys for custom CRC parameters", 0);
+            return;
+        }
         
         // Copy the generated keys
         memcpy(obj->params.keys, temp_params.keys, sizeof(obj->params.keys));
@@ -775,11 +985,19 @@ PHP_METHOD(CrcFast_Params, __construct)
     // Validate the parameters by checking if they produce the expected check value
     // This is done by computing CRC of "123456789" and comparing with check parameter
     const char *test_data = "123456789";
-    uint64_t computed_check = crc_fast_checksum_with_params(obj->params, test_data, 9);
+    uint64_t computed_check;
+    
+    try {
+        computed_check = crc_fast_checksum_with_params(obj->params, test_data, 9);
+    } catch (...) {
+        zend_throw_exception(zend_ce_exception, "Failed to validate custom CRC parameters", 0);
+        return;
+    }
     
     if (computed_check != (uint64_t)check) {
         zend_throw_exception_ex(zend_ce_exception, 0, 
-            "Parameters validation failed: computed check 0x%016" PRIx64 " does not match expected check 0x%llx", 
+            "Parameters validation failed: computed check 0x%016" PRIx64 " does not match expected check 0x%llx. "
+            "Please verify your CRC parameters are correct", 
             computed_check, (unsigned long long)check);
         return;
     }
@@ -793,6 +1011,11 @@ PHP_METHOD(CrcFast_Params, getWidth)
 
     ZEND_PARSE_PARAMETERS_NONE();
 
+    if (!obj) {
+        zend_throw_exception(zend_ce_exception, "Invalid Params object", 0);
+        return;
+    }
+
     RETURN_LONG((zend_long)obj->params.width);
 }
 /* }}} */
@@ -803,6 +1026,11 @@ PHP_METHOD(CrcFast_Params, getPoly)
     php_crc_fast_params_obj *obj = Z_CRC_FAST_PARAMS_P(getThis());
 
     ZEND_PARSE_PARAMETERS_NONE();
+
+    if (!obj) {
+        zend_throw_exception(zend_ce_exception, "Invalid Params object", 0);
+        return;
+    }
 
     RETURN_LONG((zend_long)obj->params.poly);
 }
@@ -815,6 +1043,11 @@ PHP_METHOD(CrcFast_Params, getInit)
 
     ZEND_PARSE_PARAMETERS_NONE();
 
+    if (!obj) {
+        zend_throw_exception(zend_ce_exception, "Invalid Params object", 0);
+        return;
+    }
+
     RETURN_LONG((zend_long)obj->params.init);
 }
 /* }}} */
@@ -825,6 +1058,11 @@ PHP_METHOD(CrcFast_Params, getRefin)
     php_crc_fast_params_obj *obj = Z_CRC_FAST_PARAMS_P(getThis());
 
     ZEND_PARSE_PARAMETERS_NONE();
+
+    if (!obj) {
+        zend_throw_exception(zend_ce_exception, "Invalid Params object", 0);
+        return;
+    }
 
     RETURN_BOOL(obj->params.refin);
 }
@@ -837,6 +1075,11 @@ PHP_METHOD(CrcFast_Params, getRefout)
 
     ZEND_PARSE_PARAMETERS_NONE();
 
+    if (!obj) {
+        zend_throw_exception(zend_ce_exception, "Invalid Params object", 0);
+        return;
+    }
+
     RETURN_BOOL(obj->params.refout);
 }
 /* }}} */
@@ -847,6 +1090,11 @@ PHP_METHOD(CrcFast_Params, getXorout)
     php_crc_fast_params_obj *obj = Z_CRC_FAST_PARAMS_P(getThis());
 
     ZEND_PARSE_PARAMETERS_NONE();
+
+    if (!obj) {
+        zend_throw_exception(zend_ce_exception, "Invalid Params object", 0);
+        return;
+    }
 
     RETURN_LONG((zend_long)obj->params.xorout);
 }
@@ -859,6 +1107,11 @@ PHP_METHOD(CrcFast_Params, getCheck)
 
     ZEND_PARSE_PARAMETERS_NONE();
 
+    if (!obj) {
+        zend_throw_exception(zend_ce_exception, "Invalid Params object", 0);
+        return;
+    }
+
     RETURN_LONG((zend_long)obj->params.check);
 }
 /* }}} */
@@ -869,6 +1122,11 @@ PHP_METHOD(CrcFast_Params, getKeys)
     php_crc_fast_params_obj *obj = Z_CRC_FAST_PARAMS_P(getThis());
 
     ZEND_PARSE_PARAMETERS_NONE();
+
+    if (!obj) {
+        zend_throw_exception(zend_ce_exception, "Invalid Params object", 0);
+        return;
+    }
 
     array_init(return_value);
 
