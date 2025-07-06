@@ -9,6 +9,7 @@ extern "C" {
 }
 
 #include "libcrc_fast.h"
+#include <stddef.h>
 
 extern zend_module_entry crc_fast_module_entry;
 # define phpext_crc_fast_ptr &crc_fast_module_entry
@@ -19,15 +20,18 @@ extern zend_module_entry crc_fast_module_entry;
 ZEND_TSRMLS_CACHE_EXTERN()
 # endif
 
-/* Define the CrcFast\Digest class */
 typedef struct _php_crc_fast_digest_obj {
     CrcFastDigestHandle *digest;
-    zend_object std;
     zend_long algorithm;
+    zend_object std;  // MUST be last
 } php_crc_fast_digest_obj;
 
+/* Use container_of pattern instead of offset macros */
+#define container_of(ptr, type, member) \
+    ((type *)((char *)(ptr) - offsetof(type, member)))
+
 static inline php_crc_fast_digest_obj *php_crc_fast_digest_from_obj(zend_object *obj) {
-    return (php_crc_fast_digest_obj*)((char*)(obj) - XtOffsetOf(php_crc_fast_digest_obj, std));
+    return container_of(obj, php_crc_fast_digest_obj, std);
 }
 
 #define Z_CRC_FAST_DIGEST_P(zv) php_crc_fast_digest_from_obj(Z_OBJ_P(zv))
