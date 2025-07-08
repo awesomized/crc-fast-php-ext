@@ -36,3 +36,13 @@
 - Always test both success and error cases
 - Include tests for parameter validation and error handling
 - Run tests after writing them to ensure they work correctly
+
+## Test Debugging
+- **NEVER** run PHP directly to test - always use `NO_INTERACTION=1 make test`
+- When tests fail, check the generated output files for debugging:
+  - `tests/[testname].out` - Contains the actual output from the test
+  - `tests/[testname].log` - Contains detailed test execution log
+  - `tests/[testname].diff` - Shows the difference between expected and actual output
+  - `tests/[testname].exp` - Contains the expected output
+- These files are automatically generated when tests run and are essential for debugging test failures
+- Always read the `.out` file first to see what the test actually produced
