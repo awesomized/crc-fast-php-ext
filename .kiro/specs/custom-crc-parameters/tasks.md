@@ -99,7 +99,7 @@
     - Test both binary and hex output formats
     - _Requirements: 3.2, 4.1_
 
-  - [ ] 8.3 Test CrcFast\combine() with custom parameters
+  - [x] 8.3 Test CrcFast\combine() with custom parameters
     - Test checksum combination with custom parameters
     - Verify results match manual calculation
     - Test with both binary and hex checksum inputs
