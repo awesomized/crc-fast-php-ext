@@ -77,7 +77,7 @@
   - Validate keys array length and values when provided
   - _Requirements: 5.1, 5.2, 5.3, 5.4_
 
-- [ ] 7. Create unit tests for CrcFast\Params class
+- [x] 7. Create unit tests for CrcFast\Params class
   - Test constructor with valid parameters
   - Test constructor with invalid parameters (wrong width, out-of-range values)
   - Test getter methods return correct values
