@@ -86,7 +86,7 @@
 
 
 
-- [-] 8. Create integration tests for custom parameters with existing functions
+- [x] 8. Create integration tests for custom parameters with existing functions
   - [x] 8.1 Test CrcFast\hash() with custom parameters
     - Create custom parameters that match existing predefined algorithms
     - Verify identical results between custom and predefined algorithms
@@ -105,7 +105,7 @@
     - Test with both binary and hex checksum inputs
     - _Requirements: 3.3, 4.1_
 
-  - [ ] 8.4 Test CrcFast\Digest class with custom parameters
+  - [x] 8.4 Test CrcFast\Digest class with custom parameters
     - Test digest creation, update, and finalization with custom parameters
     - Test digest combination with custom parameters
     - Verify results match direct hash() function calls
