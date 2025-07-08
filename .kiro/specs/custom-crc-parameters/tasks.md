@@ -86,8 +86,8 @@
 
 
 
-- [ ] 8. Create integration tests for custom parameters with existing functions
-  - [ ] 8.1 Test CrcFast\hash() with custom parameters
+- [-] 8. Create integration tests for custom parameters with existing functions
+  - [x] 8.1 Test CrcFast\hash() with custom parameters
     - Create custom parameters that match existing predefined algorithms
     - Verify identical results between custom and predefined algorithms
     - Test both 32-bit and 64-bit custom algorithms
