@@ -93,7 +93,7 @@
     - Test both 32-bit and 64-bit custom algorithms
     - _Requirements: 3.1, 4.1_
 
-  - [ ] 8.2 Test CrcFast\hash_file() with custom parameters
+  - [x] 8.2 Test CrcFast\hash_file() with custom parameters
     - Test file hashing with custom parameters
     - Verify results match hash() function for same data
     - Test both binary and hex output formats
