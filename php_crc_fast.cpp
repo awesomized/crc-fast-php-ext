@@ -167,7 +167,7 @@ static inline CrcFastAlgorithm php_crc_fast_get_algorithm(zend_long algo) {
 
         default:
             zend_throw_exception_ex(zend_ce_exception, 0, 
-                "Invalid algorithm constant %ld. Use CrcFast\\get_supported_algorithms() to see valid values", algo);
+                "Invalid algorithm constant %lld. Use CrcFast\\get_supported_algorithms() to see valid values", algo);
             return CrcFastAlgorithm::Crc32IsoHdlc; // Default fallback
     }
 }
@@ -282,7 +282,7 @@ PHP_FUNCTION(CrcFast_hash)
             result = crc_fast_checksum(algo, data, data_len);
         } catch (...) {
             zend_throw_exception_ex(zend_ce_exception, 0, 
-                "Failed to compute CRC checksum for algorithm %ld", algorithm);
+                "Failed to compute CRC checksum for algorithm %lld", algorithm);
             return;
         }
 
@@ -353,7 +353,7 @@ PHP_FUNCTION(CrcFast_hash_file)
             result = crc_fast_checksum_file(algo, (const uint8_t*)filename, filename_len);
         } catch (...) {
             zend_throw_exception_ex(zend_ce_exception, 0, 
-                "Failed to compute CRC checksum for file '%s' with algorithm %ld", filename, algorithm);
+                "Failed to compute CRC checksum for file '%s' with algorithm %lld", filename, algorithm);
             return;
         }
 
@@ -419,7 +419,7 @@ PHP_FUNCTION(CrcFast_combine)
 
     if (length2 < 0) {
         zend_throw_exception_ex(zend_ce_exception, 0, 
-            "Length parameter must be non-negative, got %ld", length2);
+            "Length parameter must be non-negative, got %lld", length2);
         return;
     }
 
@@ -555,7 +555,7 @@ PHP_FUNCTION(CrcFast_combine)
             result = crc_fast_checksum_combine(algo, cs1, cs2, length2);
         } catch (...) {
             zend_throw_exception_ex(zend_ce_exception, 0, 
-                "Failed to combine CRC checksums for algorithm %ld", algorithm);
+                "Failed to combine CRC checksums for algorithm %lld", algorithm);
             return;
         }
 
@@ -624,13 +624,13 @@ PHP_METHOD(CrcFast_Digest, __construct)
             obj->digest = crc_fast_digest_new(algo);
         } catch (...) {
             zend_throw_exception_ex(zend_ce_exception, 0, 
-                "Failed to create digest for algorithm %ld", algorithm);
+                "Failed to create digest for algorithm %lld", algorithm);
             return;
         }
         
         if (!obj->digest) {
             zend_throw_exception_ex(zend_ce_exception, 0, 
-                "C library failed to create digest for algorithm %ld", algorithm);
+                "C library failed to create digest for algorithm %lld", algorithm);
             return;
         }
         
@@ -859,32 +859,32 @@ PHP_METHOD(CrcFast_Params, __construct)
     // Validate width - only 32 and 64 are supported
     if (width != 32 && width != 64) {
         zend_throw_exception_ex(zend_ce_exception, 0, 
-            "Invalid width %ld. Only 32 and 64 bit widths are supported", width);
+            "Invalid width %lld. Only 32 and 64 bit widths are supported", width);
         return;
     }
 
     // Validate parameters are not negative
     if (poly < 0) {
         zend_throw_exception_ex(zend_ce_exception, 0, 
-            "Polynomial value %ld cannot be negative", poly);
+            "Polynomial value %lld cannot be negative", poly);
         return;
     }
 
     if (init < 0) {
         zend_throw_exception_ex(zend_ce_exception, 0, 
-            "Init value %ld cannot be negative", init);
+            "Init value %lld cannot be negative", init);
         return;
     }
 
     if (xorout < 0) {
         zend_throw_exception_ex(zend_ce_exception, 0, 
-            "Xorout value %ld cannot be negative", xorout);
+            "Xorout value %lld cannot be negative", xorout);
         return;
     }
 
     if (check < 0) {
         zend_throw_exception_ex(zend_ce_exception, 0, 
-            "Check value %ld cannot be negative", check);
+            "Check value %lld cannot be negative", check);
         return;
     }
 
@@ -892,7 +892,7 @@ PHP_METHOD(CrcFast_Params, __construct)
     uint64_t max_poly = (width == 32) ? 0xFFFFFFFFULL : 0xFFFFFFFFFFFFFFFFULL;
     if ((uint64_t)poly > max_poly) {
         zend_throw_exception_ex(zend_ce_exception, 0, 
-            "Polynomial 0x%lx exceeds maximum value for %ld-bit width", poly, width);
+            "Polynomial 0x%llx exceeds maximum value for %lld-bit width", poly, width);
         return;
     }
 
@@ -900,7 +900,7 @@ PHP_METHOD(CrcFast_Params, __construct)
     uint64_t max_init = (width == 32) ? 0xFFFFFFFFULL : 0xFFFFFFFFFFFFFFFFULL;
     if ((uint64_t)init > max_init) {
         zend_throw_exception_ex(zend_ce_exception, 0, 
-            "Init value 0x%lx exceeds maximum value for %ld-bit width", init, width);
+            "Init value 0x%llx exceeds maximum value for %lld-bit width", init, width);
         return;
     }
 
@@ -908,7 +908,7 @@ PHP_METHOD(CrcFast_Params, __construct)
     uint64_t max_xorout = (width == 32) ? 0xFFFFFFFFULL : 0xFFFFFFFFFFFFFFFFULL;
     if ((uint64_t)xorout > max_xorout) {
         zend_throw_exception_ex(zend_ce_exception, 0, 
-            "Xorout value 0x%lx exceeds maximum value for %ld-bit width", xorout, width);
+            "Xorout value 0x%llx exceeds maximum value for %lld-bit width", xorout, width);
         return;
     }
 
@@ -916,7 +916,7 @@ PHP_METHOD(CrcFast_Params, __construct)
     uint64_t max_check = (width == 32) ? 0xFFFFFFFFULL : 0xFFFFFFFFFFFFFFFFULL;
     if ((uint64_t)check > max_check) {
         zend_throw_exception_ex(zend_ce_exception, 0, 
-            "Check value 0x%lx exceeds maximum value for %ld-bit width", check, width);
+            "Check value 0x%llx exceeds maximum value for %lld-bit width", check, width);
         return;
     }
 
@@ -953,7 +953,7 @@ PHP_METHOD(CrcFast_Params, __construct)
             zend_long key_value = Z_LVAL_P(key_val);
             if (key_value < 0) {
                 zend_throw_exception_ex(zend_ce_exception, 0, 
-                    "Key values cannot be negative, element %d has value %ld", i, key_value);
+                    "Key values cannot be negative, element %d has value %lld", i, key_value);
                 return;
             }
             

@@ -122,3 +122,9 @@
   - Run complete test suite to verify all functionality
   - Test extension loading and basic functionality
   - _Requirements: All requirements verification_
+
+- [x] 11. Fix build warnings for zend_long format specifiers
+  - Fix all format string warnings by using proper format specifiers for zend_long type
+  - Change %ld to %lld and %lx to %llx for zend_long variables
+  - Rebuild and verify all tests still pass with clean compilation
+  - _Requirements: Code quality and maintainability_
