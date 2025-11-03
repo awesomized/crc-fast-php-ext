@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. Create config.w32 file with basic structure and argument parsing
+- [x] 1. Create config.w32 file with basic structure and argument parsing
   - Create config.w32 file in the extension root directory
   - Implement ARG_WITH for --with-crc-fast configuration option
   - Add PHP version check (require PHP 8.1.0 or higher)

@@ -1,0 +1,20 @@
+// config.w32 for crc_fast extension
+
+ARG_WITH("crc-fast", "for crc_fast support", "no");
+
+if (PHP_CRC_FAST != "no") {
+	
+	// Check PHP version requirement (8.1.0 or higher)
+	var php_version_id = parseInt(PHP_VERSION.replace(/\./g, ''));
+	var required_version = 810; // 8.1.0
+	
+	if (php_version_id < required_version) {
+		ERROR("crc_fast extension requires PHP 8.1.0 or higher. Current version: " + PHP_VERSION);
+	}
+	
+	STDOUT.WriteLine("Checking for crc_fast library...");
+	
+	// Extension will be configured in subsequent tasks
+	// This placeholder ensures the basic structure is in place
+	
+}
