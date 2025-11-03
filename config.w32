@@ -145,5 +145,23 @@ if (PHP_CRC_FAST != "no") {
 	STDOUT.WriteLine("  - CRC_FAST_EXCEPTIONS=0");
 	STDOUT.WriteLine("  - CRC_FAST_DEVELOPMENT_CHECKS=0");
 	
+	// Task 4: Register extension with build system
+	STDOUT.WriteLine("Registering crc_fast extension...");
+	
+	// Combine all compiler flags
+	var cflags = PHP_CRC_FAST_CFLAGS;
+	
+	// Register the extension as a shared library
+	// EXTENSION(name, source_files, shared, extra_cflags, extra_libs)
+	EXTENSION("crc_fast", "php_crc_fast.cpp", PHP_CRC_FAST_SHARED, cflags);
+	
+	// Add the library flags to the extension
+	ADD_EXTENSION_DEP("crc_fast", "crc_fast.lib", true);
+	
+	STDOUT.WriteLine("crc_fast extension registered successfully");
+	STDOUT.WriteLine("  - Source file: php_crc_fast.cpp");
+	STDOUT.WriteLine("  - Build type: shared library");
+	STDOUT.WriteLine("  - Static library: crc_fast.lib");
+	
 	STDOUT.WriteLine("crc_fast extension configuration complete");
 }

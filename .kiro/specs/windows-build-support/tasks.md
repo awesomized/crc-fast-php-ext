@@ -49,7 +49,7 @@
     - Add /DCRC_FAST_DEVELOPMENT_CHECKS=0 define
     - _Requirements: 5.1, 5.2, 5.3, 5.4_
 
-- [ ] 4. Register extension with build system
+- [x] 4. Register extension with build system
   - Use EXTENSION macro to register crc_fast extension
   - Specify php_crc_fast.cpp as the main source file
   - Configure extension to build as shared library
