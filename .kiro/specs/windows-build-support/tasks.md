@@ -7,22 +7,22 @@
   - Set up basic conditional logic for when extension is enabled
   - _Requirements: 1.1, 1.4, 1.5_
 
-- [ ] 2. Implement library path search and detection logic
-  - [ ] 2.1 Implement custom path handling
+- [x] 2. Implement library path search and detection logic
+  - [x] 2.1 Implement custom path handling
     - Parse user-provided path from --with-crc-fast=<path>
     - Validate custom path contains include/libcrc_fast.h
     - Validate custom path contains lib/crc_fast.lib
     - Set CRC_FAST_DIR variable when custom path is valid
     - _Requirements: 3.1, 3.2, 3.3, 3.4_
   
-  - [ ] 2.2 Implement standard location search
+  - [x] 2.2 Implement standard location search
     - Define array of standard search paths (Program Files, vcpkg, Chocolatey, Scoop)
     - Implement loop to check each standard location
     - Use FileSystemObject to verify header and library files exist
     - Set CRC_FAST_DIR to first valid location found
     - _Requirements: 2.1, 2.2, 2.3, 2.4_
   
-  - [ ] 2.3 Implement error handling for missing library
+  - [x] 2.3 Implement error handling for missing library
     - Display clear error when library not found in standard locations
     - Display clear error when custom path is invalid
     - Display specific error for missing header file

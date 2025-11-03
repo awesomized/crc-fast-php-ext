@@ -14,7 +14,81 @@ if (PHP_CRC_FAST != "no") {
 	
 	STDOUT.WriteLine("Checking for crc_fast library...");
 	
-	// Extension will be configured in subsequent tasks
-	// This placeholder ensures the basic structure is in place
+	var CRC_FAST_DIR = null;
+	var fso = new ActiveXObject("Scripting.FileSystemObject");
+	
+	// Task 2.1: Implement custom path handling
+	// Check if user provided a custom path
+	if (PHP_CRC_FAST != "yes") {
+		// User specified a custom path
+		var custom_path = PHP_CRC_FAST;
+		STDOUT.WriteLine("Checking custom path: " + custom_path);
+		
+		var header_path = custom_path + "\\include\\libcrc_fast.h";
+		var lib_path = custom_path + "\\lib\\crc_fast.lib";
+		
+		if (!fso.FileExists(header_path)) {
+			ERROR("Cannot find libcrc_fast.h in " + custom_path + "\\include\n" +
+			      "Please verify the crc_fast library is properly installed");
+		}
+		
+		if (!fso.FileExists(lib_path)) {
+			ERROR("Cannot find crc_fast.lib in " + custom_path + "\\lib\n" +
+			      "Please verify the crc_fast library is properly installed");
+		}
+		
+		// Custom path is valid
+		CRC_FAST_DIR = custom_path;
+		STDOUT.WriteLine("Found crc_fast library at: " + CRC_FAST_DIR);
+	}
+	// Task 2.2: Implement standard location search
+	else {
+		// Search standard Windows locations
+		var standard_paths = [
+			"C:\\Program Files\\crc_fast",
+			"C:\\Program Files (x86)\\crc_fast",
+			"C:\\crc_fast",
+			"C:\\vcpkg\\installed\\x64-windows",
+			"C:\\vcpkg\\installed\\x86-windows",
+			"C:\\tools\\crc_fast"
+		];
+		
+		// Add Scoop path if USERPROFILE is set
+		var userprofile = WshShell.Environment("Process").Item("USERPROFILE");
+		if (userprofile) {
+			standard_paths.push(userprofile + "\\scoop\\apps\\crc_fast\\current");
+		}
+		
+		STDOUT.WriteLine("Searching standard locations...");
+		
+		for (var i = 0; i < standard_paths.length; i++) {
+			var search_path = standard_paths[i];
+			var header_path = search_path + "\\include\\libcrc_fast.h";
+			var lib_path = search_path + "\\lib\\crc_fast.lib";
+			
+			if (fso.FileExists(header_path) && fso.FileExists(lib_path)) {
+				CRC_FAST_DIR = search_path;
+				STDOUT.WriteLine("Found crc_fast library at: " + CRC_FAST_DIR);
+				break;
+			}
+		}
+		
+		// Task 2.3: Implement error handling for missing library
+		if (!CRC_FAST_DIR) {
+			ERROR("crc_fast library not found in standard locations.\n" +
+			      "Please specify the installation path using --with-crc-fast=<path>\n" +
+			      "Standard locations checked:\n" +
+			      "  - C:\\Program Files\\crc_fast\n" +
+			      "  - C:\\Program Files (x86)\\crc_fast\n" +
+			      "  - C:\\crc_fast\n" +
+			      "  - C:\\vcpkg\\installed\\x64-windows\n" +
+			      "  - C:\\vcpkg\\installed\\x86-windows\n" +
+			      "  - C:\\tools\\crc_fast\n" +
+			      "  - %USERPROFILE%\\scoop\\apps\\crc_fast\\current");
+		}
+	}
+	
+	// At this point, CRC_FAST_DIR is set to a valid path
+	// Further configuration will be done in subsequent tasks
 	
 }
