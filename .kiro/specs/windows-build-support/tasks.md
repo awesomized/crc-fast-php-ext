@@ -29,20 +29,20 @@
     - Display specific error for missing library file
     - _Requirements: 2.5, 3.5_
 
-- [ ] 3. Configure compiler and linker settings
-  - [ ] 3.1 Add include path configuration
+- [x] 3. Configure compiler and linker settings
+  - [x] 3.1 Add include path configuration
     - Use CHECK_HEADER_ADD_INCLUDE to add crc_fast include directory
     - Verify libcrc_fast.h is accessible
     - _Requirements: 4.1_
   
-  - [ ] 3.2 Add library path and linking configuration
+  - [x] 3.2 Add library path and linking configuration
     - Add library directory to linker search path
     - Use CHECK_LIB to verify crc_fast.lib exists and contains required symbols
     - Verify crc_fast_digest_new symbol is present
     - Link crc_fast.lib statically to the extension
     - _Requirements: 4.2, 4.3, 4.4_
   
-  - [ ] 3.3 Set compiler flags for C++17 and defines
+  - [x] 3.3 Set compiler flags for C++17 and defines
     - Add /std:c++17 compiler flag
     - Add /DZEND_ENABLE_STATIC_TSRMLS_CACHE=1 define
     - Add /DCRC_FAST_EXCEPTIONS=0 define

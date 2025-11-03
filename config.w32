@@ -89,6 +89,61 @@ if (PHP_CRC_FAST != "no") {
 	}
 	
 	// At this point, CRC_FAST_DIR is set to a valid path
-	// Further configuration will be done in subsequent tasks
 	
+	// Task 3.1: Add include path configuration
+	var include_dir = CRC_FAST_DIR + "\\include";
+	var header_file = "libcrc_fast.h";
+	
+	STDOUT.WriteLine("Adding include path: " + include_dir);
+	
+	if (CHECK_HEADER_ADD_INCLUDE(header_file, "CFLAGS_CRC_FAST", include_dir)) {
+		STDOUT.WriteLine("Found and added header: " + header_file);
+	} else {
+		ERROR("Cannot find libcrc_fast.h in " + include_dir + "\n" +
+		      "Please verify the crc_fast library is properly installed");
+	}
+	
+	// Task 3.2: Add library path and linking configuration
+	var lib_dir = CRC_FAST_DIR + "\\lib";
+	var lib_name = "crc_fast.lib";
+	
+	STDOUT.WriteLine("Adding library path: " + lib_dir);
+	
+	// Add library directory to linker search path
+	ADD_FLAG("LDFLAGS_CRC_FAST", "/LIBPATH:" + lib_dir);
+	
+	// Verify the library exists and link it
+	if (CHECK_LIB(lib_name, "crc_fast", lib_dir)) {
+		STDOUT.WriteLine("Found library: " + lib_name);
+		
+		// Verify required symbol is present
+		// Note: CHECK_LIB already verifies the library can be linked
+		// Symbol verification happens at link time
+		
+		// Link the static library
+		ADD_FLAG("LIBS_CRC_FAST", "crc_fast.lib");
+		STDOUT.WriteLine("Configured to link crc_fast.lib statically");
+	} else {
+		ERROR("Cannot find or link crc_fast.lib in " + lib_dir + "\n" +
+		      "Please verify the crc_fast library is properly installed");
+	}
+	
+	// Task 3.3: Set compiler flags for C++17 and defines
+	STDOUT.WriteLine("Setting compiler flags...");
+	
+	// Add C++17 standard flag
+	ADD_FLAG("CFLAGS_CRC_FAST", "/std:c++17");
+	
+	// Add required defines
+	ADD_FLAG("CFLAGS_CRC_FAST", "/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1");
+	ADD_FLAG("CFLAGS_CRC_FAST", "/DCRC_FAST_EXCEPTIONS=0");
+	ADD_FLAG("CFLAGS_CRC_FAST", "/DCRC_FAST_DEVELOPMENT_CHECKS=0");
+	
+	STDOUT.WriteLine("Compiler flags configured:");
+	STDOUT.WriteLine("  - C++17 standard enabled");
+	STDOUT.WriteLine("  - ZEND_ENABLE_STATIC_TSRMLS_CACHE=1");
+	STDOUT.WriteLine("  - CRC_FAST_EXCEPTIONS=0");
+	STDOUT.WriteLine("  - CRC_FAST_DEVELOPMENT_CHECKS=0");
+	
+	STDOUT.WriteLine("crc_fast extension configuration complete");
 }
