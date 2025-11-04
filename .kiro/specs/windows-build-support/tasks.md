@@ -56,9 +56,8 @@
   - Pass all compiler flags to EXTENSION macro
   - _Requirements: 1.1, 5.5_
 
-- [ ] 5. Test config.w32 with various scenarios
+- [x] 5. Test config.w32 with various scenarios
   - Test with library in standard Program Files location
-  - Test with library in vcpkg location
   - Test with custom path specified
   - Test error handling when library is missing
   - Test error handling with invalid custom path
