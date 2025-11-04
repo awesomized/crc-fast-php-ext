@@ -1,16 +1,14 @@
 // config.w32 for crc_fast extension
 
+// Check PHP version requirement (8.1.0 or higher)
+if (PHP_VERSION < 8 || (PHP_VERSION == 8 && PHP_MINOR_VERSION < 1)) {
+	ERROR("crc_fast extension requires PHP 8.1.0 or higher\n" +
+	      "Current PHP version: " + PHP_VERSION_STRING);
+}
+
 ARG_WITH("crc-fast", "for crc_fast support", "no");
 
 if (PHP_CRC_FAST != "no") {
-	
-	// Check PHP version requirement (8.1.0 or higher)
-	var php_version_id = parseInt(PHP_VERSION.replace(/\./g, ''));
-	var required_version = 810; // 8.1.0
-	
-	if (php_version_id < required_version) {
-		ERROR("crc_fast extension requires PHP 8.1.0 or higher. Current version: " + PHP_VERSION);
-	}
 	
 	STDOUT.WriteLine("Checking for crc_fast library...");
 	
@@ -45,11 +43,15 @@ if (PHP_CRC_FAST != "no") {
 	else {
 		// Search standard Windows locations
 		var standard_paths = [
+			"C:\\Program Files\\crc-fast",
 			"C:\\Program Files\\crc_fast",
+			"C:\\Program Files (x86)\\crc-fast",
 			"C:\\Program Files (x86)\\crc_fast",
+			"C:\\crc-fast",
 			"C:\\crc_fast",
 			"C:\\vcpkg\\installed\\x64-windows",
 			"C:\\vcpkg\\installed\\x86-windows",
+			"C:\\tools\\crc-fast",
 			"C:\\tools\\crc_fast"
 		];
 		
@@ -78,12 +80,12 @@ if (PHP_CRC_FAST != "no") {
 			ERROR("crc_fast library not found in standard locations.\n" +
 			      "Please specify the installation path using --with-crc-fast=<path>\n" +
 			      "Standard locations checked:\n" +
-			      "  - C:\\Program Files\\crc_fast\n" +
-			      "  - C:\\Program Files (x86)\\crc_fast\n" +
-			      "  - C:\\crc_fast\n" +
+			      "  - C:\\Program Files\\crc-fast\n" +
+			      "  - C:\\Program Files (x86)\\crc-fast\n" +
+			      "  - C:\\crc-fast\n" +
 			      "  - C:\\vcpkg\\installed\\x64-windows\n" +
 			      "  - C:\\vcpkg\\installed\\x86-windows\n" +
-			      "  - C:\\tools\\crc_fast\n" +
+			      "  - C:\\tools\\crc-fast\n" +
 			      "  - %USERPROFILE%\\scoop\\apps\\crc_fast\\current");
 		}
 	}
@@ -109,8 +111,9 @@ if (PHP_CRC_FAST != "no") {
 	
 	STDOUT.WriteLine("Adding library path: " + lib_dir);
 	
-	// Add library directory to linker search path
-	ADD_FLAG("LDFLAGS_CRC_FAST", "/LIBPATH:" + lib_dir);
+	// Add library directory to linker search path (quote path if it contains spaces)
+	var lib_path_flag = "/LIBPATH:\"" + lib_dir + "\"";
+	ADD_FLAG("LDFLAGS_CRC_FAST", lib_path_flag);
 	
 	// Verify the library exists and link it
 	if (CHECK_LIB(lib_name, "crc_fast", lib_dir)) {
@@ -148,15 +151,16 @@ if (PHP_CRC_FAST != "no") {
 	// Task 4: Register extension with build system
 	STDOUT.WriteLine("Registering crc_fast extension...");
 	
-	// Combine all compiler flags
-	var cflags = PHP_CRC_FAST_CFLAGS;
-	
 	// Register the extension as a shared library
 	// EXTENSION(name, source_files, shared, extra_cflags, extra_libs)
-	EXTENSION("crc_fast", "php_crc_fast.cpp", PHP_CRC_FAST_SHARED, cflags);
+	EXTENSION("crc_fast", "php_crc_fast.cpp", PHP_CRC_FAST_SHARED, "/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1");
 	
 	// Add the library flags to the extension
 	ADD_EXTENSION_DEP("crc_fast", "crc_fast.lib", true);
+	
+	// Add required Windows libraries for Rust crc_fast library
+	ADD_FLAG("LIBS_CRC_FAST", "userenv.lib");
+	ADD_FLAG("LIBS_CRC_FAST", "ntdll.lib");
 	
 	STDOUT.WriteLine("crc_fast extension registered successfully");
 	STDOUT.WriteLine("  - Source file: php_crc_fast.cpp");
