@@ -1008,9 +1008,9 @@ PHP_METHOD(CrcFast_Params, __construct)
     
     if (computed_check != (uint64_t)check) {
         zend_throw_exception_ex(zend_ce_exception, 0, 
-            "Parameters validation failed: computed check 0x%016" PRIx64 " does not match expected check 0x%llx. "
+            "Parameters validation failed: computed check 0x%016" PRIx64 " does not match expected check 0x%016" PRIx64 ". "
             "Please verify your CRC parameters are correct", 
-            computed_check, (unsigned long long)check);
+            computed_check, (uint64_t)check);
         return;
     }
 }

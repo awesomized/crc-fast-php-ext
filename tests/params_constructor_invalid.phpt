@@ -146,7 +146,7 @@ PASS: Non-integer key rejected: All keys must be integers, element 5 is not an i
 PASS: Negative key rejected: Key values cannot be negative, element 10 has value -1
 
 Testing invalid check value (parameters that don't produce expected check):
-PASS: Invalid check value rejected: Parameters validation failed: computed check 0x00000000340bc6d9 does not match expected check 0x12345678. Please verify your CRC parameters are correct
+PASS: Invalid check value rejected: Parameters validation failed: computed check 0x00000000340bc6d9 does not match expected check 0x0000000012345678. Please verify your CRC parameters are correct
 
 Testing negative parameter values:
 PASS: Negative polynomial rejected: Polynomial value -1 cannot be negative

@@ -93,5 +93,5 @@ PASS: Check value too large error: Check value 0x1ffffffff exceeds maximum value
 PASS: Invalid keys array length error: Keys array must contain exactly 23 elements, got 3
 PASS: Non-integer key values error: All keys must be integers, element 5 is not an integer
 PASS: Negative key values error: Key values cannot be negative, element 10 has value -1
-PASS: Invalid check value error: Parameters validation failed: computed check 0x00000000340bc6d9 does not match expected check 0x12345678. Please verify your CRC parameters are correct
+PASS: Invalid check value error: Parameters validation failed: computed check 0x00000000340bc6d9 does not match expected check 0x0000000012345678. Please verify your CRC parameters are correct
 All error handling tests completed
