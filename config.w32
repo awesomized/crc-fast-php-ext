@@ -1,0 +1,171 @@
+// config.w32 for crc_fast extension
+
+// Check PHP version requirement (8.1.0 or higher)
+if (PHP_VERSION < 8 || (PHP_VERSION == 8 && PHP_MINOR_VERSION < 1)) {
+	ERROR("crc_fast extension requires PHP 8.1.0 or higher\n" +
+	      "Current PHP version: " + PHP_VERSION_STRING);
+}
+
+ARG_WITH("crc-fast", "for crc_fast support", "no");
+
+if (PHP_CRC_FAST != "no") {
+	
+	STDOUT.WriteLine("Checking for crc_fast library...");
+	
+	var CRC_FAST_DIR = null;
+	var fso = new ActiveXObject("Scripting.FileSystemObject");
+	
+	// Task 2.1: Implement custom path handling
+	// Check if user provided a custom path
+	if (PHP_CRC_FAST != "yes") {
+		// User specified a custom path
+		var custom_path = PHP_CRC_FAST;
+		STDOUT.WriteLine("Checking custom path: " + custom_path);
+		
+		var header_path = custom_path + "\\include\\libcrc_fast.h";
+		var lib_path = custom_path + "\\lib\\crc_fast.lib";
+		
+		if (!fso.FileExists(header_path)) {
+			ERROR("Cannot find libcrc_fast.h in " + custom_path + "\\include\n" +
+			      "Please verify the crc_fast library is properly installed");
+		}
+		
+		if (!fso.FileExists(lib_path)) {
+			ERROR("Cannot find crc_fast.lib in " + custom_path + "\\lib\n" +
+			      "Please verify the crc_fast library is properly installed");
+		}
+		
+		// Custom path is valid
+		CRC_FAST_DIR = custom_path;
+		STDOUT.WriteLine("Found crc_fast library at: " + CRC_FAST_DIR);
+	}
+	// Task 2.2: Implement standard location search
+	else {
+		// Search standard Windows locations
+		var standard_paths = [
+			"C:\\Program Files\\crc-fast",
+			"C:\\Program Files\\crc_fast",
+			"C:\\Program Files (x86)\\crc-fast",
+			"C:\\Program Files (x86)\\crc_fast",
+			"C:\\crc-fast",
+			"C:\\crc_fast",
+			"C:\\vcpkg\\installed\\x64-windows",
+			"C:\\vcpkg\\installed\\x86-windows",
+			"C:\\tools\\crc-fast",
+			"C:\\tools\\crc_fast"
+		];
+		
+		// Add Scoop path if USERPROFILE is set
+		var userprofile = WshShell.Environment("Process").Item("USERPROFILE");
+		if (userprofile) {
+			standard_paths.push(userprofile + "\\scoop\\apps\\crc_fast\\current");
+		}
+		
+		STDOUT.WriteLine("Searching standard locations...");
+		
+		for (var i = 0; i < standard_paths.length; i++) {
+			var search_path = standard_paths[i];
+			var header_path = search_path + "\\include\\libcrc_fast.h";
+			var lib_path = search_path + "\\lib\\crc_fast.lib";
+			
+			if (fso.FileExists(header_path) && fso.FileExists(lib_path)) {
+				CRC_FAST_DIR = search_path;
+				STDOUT.WriteLine("Found crc_fast library at: " + CRC_FAST_DIR);
+				break;
+			}
+		}
+		
+		// Task 2.3: Implement error handling for missing library
+		if (!CRC_FAST_DIR) {
+			ERROR("crc_fast library not found in standard locations.\n" +
+			      "Please specify the installation path using --with-crc-fast=<path>\n" +
+			      "Standard locations checked:\n" +
+			      "  - C:\\Program Files\\crc-fast\n" +
+			      "  - C:\\Program Files (x86)\\crc-fast\n" +
+			      "  - C:\\crc-fast\n" +
+			      "  - C:\\vcpkg\\installed\\x64-windows\n" +
+			      "  - C:\\vcpkg\\installed\\x86-windows\n" +
+			      "  - C:\\tools\\crc-fast\n" +
+			      "  - %USERPROFILE%\\scoop\\apps\\crc_fast\\current");
+		}
+	}
+	
+	// At this point, CRC_FAST_DIR is set to a valid path
+	
+	// Task 3.1: Add include path configuration
+	var include_dir = CRC_FAST_DIR + "\\include";
+	var header_file = "libcrc_fast.h";
+	
+	STDOUT.WriteLine("Adding include path: " + include_dir);
+	
+	if (CHECK_HEADER_ADD_INCLUDE(header_file, "CFLAGS_CRC_FAST", include_dir)) {
+		STDOUT.WriteLine("Found and added header: " + header_file);
+	} else {
+		ERROR("Cannot find libcrc_fast.h in " + include_dir + "\n" +
+		      "Please verify the crc_fast library is properly installed");
+	}
+	
+	// Task 3.2: Add library path and linking configuration
+	var lib_dir = CRC_FAST_DIR + "\\lib";
+	var lib_name = "crc_fast.lib";
+	
+	STDOUT.WriteLine("Adding library path: " + lib_dir);
+	
+	// Add library directory to linker search path (quote path if it contains spaces)
+	var lib_path_flag = "/LIBPATH:\"" + lib_dir + "\"";
+	ADD_FLAG("LDFLAGS_CRC_FAST", lib_path_flag);
+	
+	// Verify the library exists and link it
+	if (CHECK_LIB(lib_name, "crc_fast", lib_dir)) {
+		STDOUT.WriteLine("Found library: " + lib_name);
+		
+		// Verify required symbol is present
+		// Note: CHECK_LIB already verifies the library can be linked
+		// Symbol verification happens at link time
+		
+		// Link the static library
+		ADD_FLAG("LIBS_CRC_FAST", "crc_fast.lib");
+		STDOUT.WriteLine("Configured to link crc_fast.lib statically");
+	} else {
+		ERROR("Cannot find or link crc_fast.lib in " + lib_dir + "\n" +
+		      "Please verify the crc_fast library is properly installed");
+	}
+	
+	// Task 3.3: Set compiler flags for C++17 and defines
+	STDOUT.WriteLine("Setting compiler flags...");
+	
+	// Add C++17 standard flag
+	ADD_FLAG("CFLAGS_CRC_FAST", "/std:c++17");
+	
+	// Add required defines
+	ADD_FLAG("CFLAGS_CRC_FAST", "/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1");
+	ADD_FLAG("CFLAGS_CRC_FAST", "/DCRC_FAST_EXCEPTIONS=0");
+	ADD_FLAG("CFLAGS_CRC_FAST", "/DCRC_FAST_DEVELOPMENT_CHECKS=0");
+	
+	STDOUT.WriteLine("Compiler flags configured:");
+	STDOUT.WriteLine("  - C++17 standard enabled");
+	STDOUT.WriteLine("  - ZEND_ENABLE_STATIC_TSRMLS_CACHE=1");
+	STDOUT.WriteLine("  - CRC_FAST_EXCEPTIONS=0");
+	STDOUT.WriteLine("  - CRC_FAST_DEVELOPMENT_CHECKS=0");
+	
+	// Task 4: Register extension with build system
+	STDOUT.WriteLine("Registering crc_fast extension...");
+	
+	// Register the extension as a shared library
+	// EXTENSION(name, source_files, shared, extra_cflags, extra_libs)
+	EXTENSION("crc_fast", "php_crc_fast.cpp", PHP_CRC_FAST_SHARED, "/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1");
+	
+	// Add the library flags to the extension
+	ADD_EXTENSION_DEP("crc_fast", "crc_fast.lib", true);
+	
+	// Add required Windows libraries for Rust crc_fast library
+	ADD_FLAG("LIBS_CRC_FAST", "userenv.lib");
+	ADD_FLAG("LIBS_CRC_FAST", "ntdll.lib");
+	
+	STDOUT.WriteLine("crc_fast extension registered successfully");
+	STDOUT.WriteLine("  - Source file: php_crc_fast.cpp");
+	STDOUT.WriteLine("  - Build type: shared library");
+	STDOUT.WriteLine("  - Static library: crc_fast.lib");
+	
+	STDOUT.WriteLine("crc_fast extension configuration complete");
+}

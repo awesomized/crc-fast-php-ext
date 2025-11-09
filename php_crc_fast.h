@@ -4,14 +4,29 @@
 #ifndef PHP_CRC_FAST_H
 # define PHP_CRC_FAST_H
 
+#ifdef __cplusplus
 extern "C" {
+#endif
+
 #include "php.h"
+
+#ifdef __cplusplus
 }
+#endif
 
 #include "libcrc_fast.h"
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern zend_module_entry crc_fast_module_entry;
+
+#ifdef __cplusplus
+}
+#endif
+
 # define phpext_crc_fast_ptr &crc_fast_module_entry
 
 # define PHP_CRC_FAST_VERSION "1.0.0"

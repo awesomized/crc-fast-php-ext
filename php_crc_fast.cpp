@@ -17,16 +17,19 @@ extern "C" {
 #include "crc_fast_arginfo.h"
 #include <string>
 
-#ifndef htonll
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-uint64_t htonll(uint64_t x) {
-    return (((uint64_t)htonl(x & 0xFFFFFFFF)) << 32) | htonl(x >> 32);
-}
-#define ntohll htonll
-#else
-#define htonll(x) (x)
-#define ntohll(x) (x)
-#endif
+// Windows SDK provides htonll/ntohll, so only define for non-Windows platforms
+#if !defined(_WIN32) && !defined(_WIN64)
+    #ifndef htonll
+        #if __BYTE_ORDER == __LITTLE_ENDIAN
+        uint64_t htonll(uint64_t x) {
+            return (((uint64_t)htonl(x & 0xFFFFFFFF)) << 32) | htonl(x >> 32);
+        }
+        #define ntohll htonll
+        #else
+        #define htonll(x) (x)
+        #define ntohll(x) (x)
+        #endif
+    #endif
 #endif
 
 /* For compatibility with older PHP versions */
@@ -173,9 +176,9 @@ static inline CrcFastAlgorithm php_crc_fast_get_algorithm(zend_long algo) {
         case PHP_CRC_FAST_CRC32_PHP:       return CrcFastAlgorithm::Crc32Bzip2;
 
         default:
-            zend_throw_exception_ex(zend_ce_exception, 0, 
+            zend_throw_exception_ex(zend_ce_exception, 0,
                 "Invalid algorithm constant %lld. Use CrcFast\\get_supported_algorithms() to see valid values", algo);
-            return CrcFastAlgorithm::Crc32IsoHdlc; // Default fallback
+            return CrcFastAlgorithm::Crc32IsoHdlc; // Fallback (never reached due to exception)
     }
 }
 
@@ -1210,6 +1213,7 @@ PHP_MINIT_FUNCTION(crc_fast)
 }
 
 /* {{{ crc_fast_module_entry */
+extern "C" {
 zend_module_entry crc_fast_module_entry = {
 	STANDARD_MODULE_HEADER,
 	"crc_fast",					/* Extension name */
@@ -1222,11 +1226,14 @@ zend_module_entry crc_fast_module_entry = {
 	PHP_CRC_FAST_VERSION,		/* Version */
 	STANDARD_MODULE_PROPERTIES
 };
+}
 /* }}} */
 
 #ifdef COMPILE_DL_CRC_FAST
 # ifdef ZTS
 ZEND_TSRMLS_CACHE_DEFINE()
 # endif
+extern "C" {
 ZEND_GET_MODULE(crc_fast)
+}
 #endif
