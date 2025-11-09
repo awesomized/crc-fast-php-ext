@@ -46,7 +46,7 @@ typedef struct _php_crc_fast_params_obj {
 } php_crc_fast_params_obj;
 
 static inline php_crc_fast_params_obj *php_crc_fast_params_from_obj(zend_object *obj) {
-    return (php_crc_fast_params_obj*)((char*)(obj) - XtOffsetOf(php_crc_fast_params_obj, std));
+    return container_of(obj, php_crc_fast_params_obj, std);
 }
 
 #define Z_CRC_FAST_PARAMS_P(zv) php_crc_fast_params_from_obj(Z_OBJ_P(zv))

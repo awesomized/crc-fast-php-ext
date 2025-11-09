@@ -1202,7 +1202,7 @@ PHP_MINIT_FUNCTION(crc_fast)
 
     // Initialize the object handlers
     memcpy(&php_crc_fast_params_object_handlers, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
-    php_crc_fast_params_object_handlers.offset = XtOffsetOf(php_crc_fast_params_obj, std);
+    php_crc_fast_params_object_handlers.offset = offsetof(php_crc_fast_params_obj, std);
     php_crc_fast_params_object_handlers.free_obj = php_crc_fast_params_free_obj;
     php_crc_fast_params_object_handlers.clone_obj = NULL; // No cloning support
 
