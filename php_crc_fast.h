@@ -41,6 +41,7 @@ static inline php_crc_fast_digest_obj *php_crc_fast_digest_from_obj(zend_object 
 /* Define the CrcFast\Params class */
 typedef struct _php_crc_fast_params_obj {
     CrcFastParams params;
+    uint64_t *keys_storage;  // Allocated storage for keys array
     zend_object std;
 } php_crc_fast_params_obj;
 

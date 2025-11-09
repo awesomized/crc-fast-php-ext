@@ -79,6 +79,12 @@ static void php_crc_fast_params_free_obj(zend_object *object)
 {
     php_crc_fast_params_obj *obj = php_crc_fast_params_from_obj(object);
 
+    // Free the allocated keys storage if it exists
+    if (obj->keys_storage) {
+        efree(obj->keys_storage);
+        obj->keys_storage = NULL;
+    }
+
     zend_object_std_dtor(&obj->std);
 }
 
@@ -94,6 +100,7 @@ static zend_object *php_crc_fast_params_create_object(zend_class_entry *ce)
     
     // Initialize the CrcFastParams struct to zero
     memset(&obj->params, 0, sizeof(CrcFastParams));
+    obj->keys_storage = NULL;
 
     return &obj->std;
 }
@@ -538,7 +545,7 @@ PHP_FUNCTION(CrcFast_combine)
     if (is_custom) {
         // Use custom parameters - handle potential C library errors
         try {
-            result = crc_fast_checksum_combine_with_custom_params(custom_params, cs1, cs2, length2);
+            result = crc_fast_checksum_combine_with_params(custom_params, cs1, cs2, length2);
         } catch (...) {
             zend_throw_exception(zend_ce_exception, "Failed to combine CRC checksums with custom parameters", 0);
             return;
@@ -930,6 +937,11 @@ PHP_METHOD(CrcFast_Params, __construct)
     obj->params.xorout = (uint64_t)xorout;
     obj->params.check = (uint64_t)check;
 
+    // Allocate memory for keys array (23 elements)
+    obj->keys_storage = (uint64_t*)emalloc(23 * sizeof(uint64_t));
+    obj->params.key_count = 23;
+    obj->params.keys = obj->keys_storage;
+
     // Handle keys parameter
     if (keys_array && Z_TYPE_P(keys_array) == IS_ARRAY) {
         // Validate keys array has exactly 23 elements
@@ -957,7 +969,7 @@ PHP_METHOD(CrcFast_Params, __construct)
                 return;
             }
             
-            obj->params.keys[i] = (uint64_t)key_value;
+            obj->keys_storage[i] = (uint64_t)key_value;
             i++;
         } ZEND_HASH_FOREACH_END();
     } else {
@@ -979,7 +991,7 @@ PHP_METHOD(CrcFast_Params, __construct)
         }
         
         // Copy the generated keys
-        memcpy(obj->params.keys, temp_params.keys, sizeof(obj->params.keys));
+        memcpy(obj->keys_storage, temp_params.keys, 23 * sizeof(uint64_t));
     }
 
     // Validate the parameters by checking if they produce the expected check value
