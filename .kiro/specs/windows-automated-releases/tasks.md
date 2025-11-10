@@ -29,7 +29,7 @@
   - Pin runner to windows-2022 for stability
   - _Requirements: 4.1, 4.2, 4.3, 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [ ] 4.2 Add crc_fast library download and extraction steps
+- [x] 4.2 Add crc_fast library download and extraction steps
   - Add step to download crc-fast Windows release artifact from GitHub
   - Map PHP architecture to library architecture (x64→x86_64, arm64→aarch64)
   - Extract library files to build directory

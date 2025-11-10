@@ -60,7 +60,7 @@ jobs:
 
   build:
     runs-on: windows-2022
-    needs: get-extension-matrix
+    needs: [check-trigger, get-extension-matrix]
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.get-extension-matrix.outputs.matrix) }}
@@ -69,3 +69,117 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ needs.check-trigger.outputs.tag_name }}
+      
+      - name: Map PHP architecture to library architecture
+        id: map-arch
+        shell: pwsh
+        run: |
+          $phpArch = "${{ matrix.arch }}"
+          
+          # Check if architecture is supported
+          if ($phpArch -eq "x86") {
+            echo "ERROR: 32-bit x86 builds are not supported"
+            echo "The crc_fast library does not provide 32-bit Windows releases"
+            echo "Supported architectures: x64, arm64"
+            exit 1
+          }
+          
+          $libArch = switch ($phpArch) {
+            "x64" { "x86_64" }
+            "arm64" { "aarch64" }
+            default { "x86_64" }
+          }
+          echo "lib_arch=$libArch" >> $env:GITHUB_OUTPUT
+          echo "Mapped PHP arch '$phpArch' to library arch '$libArch'"
+      
+      - name: Download crc_fast Windows library release
+        shell: pwsh
+        run: |
+          $libArch = "${{ steps.map-arch.outputs.lib_arch }}"
+          
+          # Get the latest release information from GitHub API
+          $releaseUrl = "https://api.github.com/repos/awesomized/crc-fast-rust/releases/latest"
+          $release = Invoke-RestMethod -Uri $releaseUrl -Headers @{
+            "Accept" = "application/vnd.github+json"
+            "User-Agent" = "GitHub-Actions"
+          }
+          
+          $version = $release.tag_name
+          echo "Latest crc_fast library version: $version"
+          
+          # Find the Windows artifact for the target architecture
+          $artifactName = "crc-fast-$version-windows-$libArch.zip"
+          $asset = $release.assets | Where-Object { $_.name -eq $artifactName }
+          
+          if (-not $asset) {
+            echo "ERROR: Could not find artifact '$artifactName' in release $version"
+            echo "Available assets:"
+            $release.assets | ForEach-Object { echo "  - $($_.name)" }
+            exit 1
+          }
+          
+          $downloadUrl = $asset.browser_download_url
+          echo "Downloading from: $downloadUrl"
+          
+          # Download the artifact
+          $outputPath = "crc_fast_lib.zip"
+          Invoke-WebRequest -Uri $downloadUrl -OutFile $outputPath -Headers @{
+            "Accept" = "application/octet-stream"
+            "User-Agent" = "GitHub-Actions"
+          }
+          
+          if (-not (Test-Path $outputPath)) {
+            echo "ERROR: Failed to download crc_fast library"
+            exit 1
+          }
+          
+          echo "Successfully downloaded crc_fast library ($([math]::Round((Get-Item $outputPath).Length / 1MB, 2)) MB)"
+      
+      - name: Extract crc_fast library files
+        shell: pwsh
+        run: |
+          $extractPath = "C:\crc_fast"
+          
+          # Create extraction directory
+          New-Item -ItemType Directory -Force -Path $extractPath | Out-Null
+          
+          # Extract the zip file
+          echo "Extracting crc_fast library to $extractPath"
+          Expand-Archive -Path "crc_fast_lib.zip" -DestinationPath $extractPath -Force
+          
+          # List extracted contents for debugging
+          echo "Extracted contents:"
+          Get-ChildItem -Recurse $extractPath | ForEach-Object { echo "  $($_.FullName)" }
+      
+      - name: Verify required library files
+        shell: pwsh
+        run: |
+          $extractPath = "C:\crc_fast"
+          $requiredFiles = @(
+            "include\libcrc_fast.h",
+            "lib\crc_fast.lib"
+          )
+          
+          $missingFiles = @()
+          foreach ($file in $requiredFiles) {
+            $fullPath = Join-Path $extractPath $file
+            if (-not (Test-Path $fullPath)) {
+              $missingFiles += $file
+              echo "MISSING: $file"
+            } else {
+              echo "FOUND: $file"
+            }
+          }
+          
+          if ($missingFiles.Count -gt 0) {
+            echo ""
+            echo "ERROR: Required library files not found after extraction:"
+            $missingFiles | ForEach-Object { echo "  - $_" }
+            echo ""
+            echo "Directory structure:"
+            Get-ChildItem -Recurse $extractPath | ForEach-Object { echo "  $($_.FullName)" }
+            exit 1
+          }
+          
+          echo ""
+          echo "All required library files verified successfully"
