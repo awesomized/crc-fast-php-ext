@@ -14,35 +14,54 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4 # not pinning to commit since this is a GitHub action, which we trust
-      - name: Checkout crc_fast library
-        uses: actions/checkout@v4 # not pinning to commit since this is a GitHub action, which we trust
-        with:
-          repository: awesomized/crc-fast-rust
-          path: lib-crc-fast
-      - id: cache-cargo
-        name: Cache Rust Cargo toolchain
-        uses: actions/cache@v4 # not pinning to commit since this is a GitHub action, which we trust
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-release
-      - if: ${{ steps.cache-cargo.outputs.cache-hit != 'true' }}
-        name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1 # not pinning to commit since this is an archived GitHub action, which we trust
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - name: Build crc_fast library
-        run: cd lib-crc-fast && cargo build --release
-      - name: Copy shared library
-        run: mkdir lib && cp lib-crc-fast/target/release/libcrc_fast.so lib/
-      - name: Copy C/C++ header
-        run: mkdir include && cp lib-crc-fast/libcrc_fast.h include/
+      - name: Download crc_fast library release
+        run: |
+          ARCH="x86_64"
+          PLATFORM="linux"
+          
+          # Fetch the latest release version
+          echo "Fetching latest crc_fast library release..."
+          LATEST_RELEASE=$(curl -sL https://api.github.com/repos/awesomized/crc-fast-rust/releases/latest | grep '"tag_name":' | sed -E 's/.*"tag_name": "([^"]+)".*/\1/')
+          
+          if [ -z "$LATEST_RELEASE" ]; then
+            echo "Error: Failed to fetch latest release version"
+            exit 1
+          fi
+          
+          echo "Latest release: ${LATEST_RELEASE}"
+          
+          ARTIFACT_NAME="crc-fast-${LATEST_RELEASE}-${PLATFORM}-${ARCH}.tar.gz"
+          DOWNLOAD_URL="https://github.com/awesomized/crc-fast-rust/releases/download/${LATEST_RELEASE}/${ARTIFACT_NAME}"
+          
+          echo "Downloading crc_fast library ${LATEST_RELEASE} for ${PLATFORM}-${ARCH}"
+          curl -sL -o crc-fast.tar.gz "${DOWNLOAD_URL}" || {
+            echo "Error: Failed to download crc_fast library release ${LATEST_RELEASE}"
+            exit 1
+          }
+          
+          # Save version for next step
+          echo "CRC_FAST_VERSION=${LATEST_RELEASE}" >> $GITHUB_ENV
+      - name: Extract crc_fast library
+        run: |
+          tar -xzf crc-fast.tar.gz
+          EXTRACT_DIR="crc-fast-${CRC_FAST_VERSION}-linux-x86_64"
+          
+          # Verify required files exist
+          if [ ! -f "${EXTRACT_DIR}/include/libcrc_fast.h" ]; then
+            echo "Error: Required header file not found: ${EXTRACT_DIR}/include/libcrc_fast.h"
+            exit 1
+          fi
+          if [ ! -f "${EXTRACT_DIR}/lib/libcrc_fast.so" ]; then
+            echo "Error: Required library file not found: ${EXTRACT_DIR}/lib/libcrc_fast.so"
+            exit 1
+          fi
+          
+          # Copy files to expected locations
+          mkdir -p lib include
+          cp "${EXTRACT_DIR}/lib/libcrc_fast.so" lib/
+          cp "${EXTRACT_DIR}/include/libcrc_fast.h" include/
+          
+          echo "Successfully extracted crc_fast library ${CRC_FAST_VERSION}"
       - name: Phpize
         run: phpize
       - name: Configure
