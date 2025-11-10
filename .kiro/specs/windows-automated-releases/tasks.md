@@ -44,7 +44,7 @@
   - _Requirements: 4.4, 4.5, 6.1, 6.2, 6.3, 6.4, 6.5_
 
 - [ ] 5. Implement draft release creation job
-- [ ] 5.1 Create release job with artifact collection
+- [x] 5.1 Create release job with artifact collection
   - Configure job to depend on build job completion
   - Run on ubuntu-latest
   - Download all DLL artifacts from build job
