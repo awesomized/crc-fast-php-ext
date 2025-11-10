@@ -1,0 +1,63 @@
+# This is an EXAMPLE workflow to build a PHP extension for Windows using GitHub Actions and must be modified prior to use.
+# It comes from `php-windows-builder` found at https://github.com/php/php-windows-builder
+
+name: Build extension
+on:
+  # When a new tag is pushed, we can build, and upload the DLLs to it.
+  push:
+    # branches: ['**'] # Uncomment this to run on push to a branch
+    tags: ['*']
+  # create: # Uncomment this to run on tag/branch creation
+  # pull_request: # Uncomment this to run on pull requests  
+
+permissions:
+  contents: write
+
+jobs:
+  # This job generates a matrix of PHP versions, architectures, and thread safety options
+  # This is done by reading the constraints from composer.json or the package.xml file.
+  # Please refer to https://github.com/php/php-windows-builder#get-the-job-matrix-to-build-a-php-extension
+  get-extension-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.extension-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Get the extension matrix
+        id: extension-matrix
+        uses: php/php-windows-builder/extension-matrix@v1
+
+  # This job builds the extension on Windows using the matrix generated from the previous job.      
+  build:
+    needs: get-extension-matrix
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix: ${{fromJson(needs.get-extension-matrix.outputs.matrix)}}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Build the extension
+        uses: php/php-windows-builder/extension@v1
+        with:
+          # Always specify the php-version, arch, and ts as they are required inputs.
+          # Please refer to https://github.com/php/php-windows-builder#build-a-php-extension
+          php-version: ${{ matrix.php-version }}
+          arch: ${{ matrix.arch }}
+          ts: ${{ matrix.ts }}
+          
+  # This job uploads the build artifacts to the immutable GitHub release it creates.
+  release:
+    runs-on: ubuntu-latest
+    needs: build
+    if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
+    steps:
+      - name: Upload artifact to the release
+        uses: php/php-windows-builder/release@v1
+        with:
+          release: ${{ github.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # Uncomment the line below to create a draft release
+          # draft: 'true' 
