@@ -183,3 +183,19 @@ jobs:
           
           echo ""
           echo "All required library files verified successfully"
+      
+      - name: Build extension with php-windows-builder
+        uses: php/php-windows-builder/extension@v1
+        with:
+          php-version: ${{ matrix.php-version }}
+          arch: ${{ matrix.arch }}
+          ts: ${{ matrix.ts }}
+          args: --with-crc-fast=C:\crc_fast
+      
+      - name: Upload DLL artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: php_crc_fast-${{ matrix.php-version }}-${{ matrix.arch }}-${{ matrix.ts }}
+          path: |
+            ${{ matrix.arch }}/Release*/php_crc_fast.dll
+          if-no-files-found: error

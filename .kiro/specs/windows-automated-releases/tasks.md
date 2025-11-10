@@ -36,7 +36,7 @@
   - Verify presence of required header and lib files
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
-- [ ] 4.3 Configure extension build with php-windows-builder
+- [x] 4.3 Configure extension build with php-windows-builder
   - Use `php/php-windows-builder/extension@v1` action
   - Pass matrix parameters (php-version, arch, ts)
   - Configure library path for config.w32 to find crc_fast
