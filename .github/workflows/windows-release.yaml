@@ -1,0 +1,43 @@
+name: Windows Release
+
+on:
+  workflow_run:
+    workflows: ["Tests"]
+    types: [completed]
+
+permissions:
+  contents: write  # For creating releases and uploading assets
+  actions: read    # For downloading artifacts from build job
+
+jobs:
+  # Check if this workflow should run (only on successful test runs triggered by version tags)
+  check-trigger:
+    runs-on: ubuntu-latest
+    if: |
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      startsWith(github.event.workflow_run.head_branch, 'refs/tags/') &&
+      contains(github.event.workflow_run.head_branch, '.')
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+      tag_name: ${{ steps.check.outputs.tag_name }}
+    steps:
+      - name: Check if triggered by version tag
+        id: check
+        run: |
+          # Extract tag name from the branch ref
+          TAG_REF="${{ github.event.workflow_run.head_branch }}"
+          TAG_NAME="${TAG_REF#refs/tags/}"
+          
+          echo "Tag reference: ${TAG_REF}"
+          echo "Tag name: ${TAG_NAME}"
+          
+          # Check if tag matches N.N.N pattern (semantic version)
+          if [[ "${TAG_NAME}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Valid version tag detected: ${TAG_NAME}"
+            echo "should_run=true" >> $GITHUB_OUTPUT
+            echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
+          else
+            echo "Not a valid version tag (N.N.N pattern): ${TAG_NAME}"
+            echo "should_run=false" >> $GITHUB_OUTPUT
+          fi

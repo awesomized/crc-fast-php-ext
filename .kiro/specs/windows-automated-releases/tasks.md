@@ -7,7 +7,7 @@
   - Update library file copy steps to work with extracted release artifacts
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 2. Create Windows Release Workflow file structure
+- [x] 2. Create Windows Release Workflow file structure
   - Create `.github/workflows/windows-release.yaml` file
   - Configure workflow to trigger on `workflow_run` completion of Tests workflow
   - Set up workflow permissions for contents write and actions read
