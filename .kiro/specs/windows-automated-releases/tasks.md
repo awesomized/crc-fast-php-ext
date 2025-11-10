@@ -14,8 +14,8 @@
   - Add condition to check if triggering event was a tag push matching N.N.N pattern
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
 
-- [ ] 3. Implement extension matrix generation job
-- [ ] 3.1 Create get-extension-matrix job
+- [x] 3. Implement extension matrix generation job
+- [x] 3.1 Create get-extension-matrix job
   - Configure job to run on ubuntu-latest
   - Add condition to only run on tag pushes matching N.N.N
   - Use `php/php-windows-builder/extension-matrix@v1` action

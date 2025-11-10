@@ -41,3 +41,19 @@ jobs:
             echo "Not a valid version tag (N.N.N pattern): ${TAG_NAME}"
             echo "should_run=false" >> $GITHUB_OUTPUT
           fi
+
+  get-extension-matrix:
+    runs-on: ubuntu-latest
+    needs: check-trigger
+    if: needs.check-trigger.outputs.should_run == 'true'
+    outputs:
+      matrix: ${{ steps.extension-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.check-trigger.outputs.tag_name }}
+      
+      - name: Generate extension build matrix
+        id: extension-matrix
+        uses: php/php-windows-builder/extension-matrix@v1
