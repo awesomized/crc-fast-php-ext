@@ -223,6 +223,7 @@ jobs:
           php-version: ${{ matrix.php-version }}
           arch: ${{ matrix.arch }}
           ts: ${{ matrix.ts }}
+          ref: ${{ needs.check-trigger.outputs.tag_name }}
           args: --with-crc-fast=C:\crc_fast
 
   release:
