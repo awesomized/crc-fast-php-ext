@@ -43,14 +43,14 @@
   - Upload built DLL artifacts with descriptive names
   - _Requirements: 4.4, 4.5, 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [ ] 5. Implement draft release creation job
+- [x] 5. Implement draft release creation job
 - [x] 5.1 Create release job with artifact collection
   - Configure job to depend on build job completion
   - Run on ubuntu-latest
   - Download all DLL artifacts from build job
   - _Requirements: 5.1, 5.2, 5.3_
 
-- [ ] 5.2 Create draft release with DLL uploads
+- [x] 5.2 Create draft release with DLL uploads
   - Use `php/php-windows-builder/release@v1` action with draft: true
   - Set release name to tag name
   - Upload all DLL artifacts to the draft release

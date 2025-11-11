@@ -211,3 +211,11 @@ jobs:
           path: artifacts
           pattern: php_crc_fast-*
           merge-multiple: false
+      
+      - name: Create draft release with DLL uploads
+        uses: php/php-windows-builder/release@v1
+        with:
+          release: ${{ needs.check-trigger.outputs.tag_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          draft: true
+          artifacts: artifacts/**/*.dll
