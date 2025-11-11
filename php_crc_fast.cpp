@@ -17,8 +17,20 @@ extern "C" {
 #include "crc_fast_arginfo.h"
 #include <string>
 
-// Windows SDK provides htonll/ntohll, so only define for non-Windows platforms
-#if !defined(_WIN32) && !defined(_WIN64)
+// Define htonll/ntohll for platforms that don't provide them
+#if defined(_WIN32) || defined(_WIN64)
+    // Windows doesn't provide htonll/ntohll, so we define them here
+    // Windows is always little-endian on x86/x64/ARM
+    #ifndef htonll
+        inline uint64_t htonll(uint64_t x) {
+            return (((uint64_t)htonl((uint32_t)(x & 0xFFFFFFFF))) << 32) | htonl((uint32_t)(x >> 32));
+        }
+        inline uint64_t ntohll(uint64_t x) {
+            return (((uint64_t)ntohl((uint32_t)(x & 0xFFFFFFFF))) << 32) | ntohl((uint32_t)(x >> 32));
+        }
+    #endif
+#else
+    // Unix-like platforms
     #ifndef htonll
         #if __BYTE_ORDER == __LITTLE_ENDIAN
         uint64_t htonll(uint64_t x) {

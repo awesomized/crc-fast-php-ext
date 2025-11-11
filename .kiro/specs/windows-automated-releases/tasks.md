@@ -22,49 +22,55 @@
   - Define matrix output for use by build job
   - _Requirements: 4.1, 4.2_
 
-- [ ] 4. Implement Windows build job with crc_fast library integration
-- [x] 4.1 Set up build job matrix configuration
+- [ ] 4. Fix Windows compatibility issues in source code
+  - Add Windows-compatible implementations of htonll and ntohll functions
+  - These functions are used for network byte order conversion but are not available on Windows
+  - Update the conditional compilation block in php_crc_fast.cpp
+  - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
+
+- [ ] 5. Implement Windows build job with crc_fast library integration
+- [x] 5.1 Set up build job matrix configuration
   - Configure job to depend on get-extension-matrix
   - Set up matrix strategy using output from matrix job
   - Pin runner to windows-2022 for stability
   - _Requirements: 4.1, 4.2, 4.3, 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [x] 4.2 Add crc_fast library download and extraction steps
+- [x] 5.2 Add crc_fast library download and extraction steps
   - Add step to download crc-fast Windows release artifact from GitHub
   - Map PHP architecture to library architecture (x64→x86_64, arm64→aarch64)
   - Extract library files to build directory
   - Verify presence of required header and lib files
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
-- [x] 4.3 Configure extension build with php-windows-builder
+- [x] 5.3 Configure extension build with php-windows-builder
   - Use `php/php-windows-builder/extension@v1` action
   - Pass matrix parameters (php-version, arch, ts)
   - Configure library path for config.w32 to find crc_fast
   - Upload built DLL artifacts with descriptive names
   - _Requirements: 4.4, 4.5, 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [x] 5. Implement draft release creation job
-- [x] 5.1 Create release job with artifact collection
+- [x] 6. Implement draft release creation job
+- [x] 6.1 Create release job with artifact collection
   - Configure job to depend on build job completion
   - Run on ubuntu-latest
   - Download all DLL artifacts from build job
   - _Requirements: 5.1, 5.2, 5.3_
 
-- [x] 5.2 Create draft release with DLL uploads
+- [x] 6.2 Create draft release with DLL uploads
   - Use `php/php-windows-builder/release@v1` action with draft: true
   - Set release name to tag name
   - Upload all DLL artifacts to the draft release
   - Ensure release is not automatically published
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [ ]* 6. Test and validate workflows
-- [ ]* 6.1 Test updated Test Workflow
+- [ ]* 7. Test and validate workflows
+- [ ]* 7.1 Test updated Test Workflow
   - Create a test branch and verify test workflow runs successfully
   - Verify library download and extraction works correctly
   - Confirm all existing tests pass with pre-built library
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ]* 6.2 Test Release Workflow with test tag
+- [ ]* 7.2 Test Release Workflow with test tag
   - Create a test tag (e.g., 0.0.1-test) to trigger workflow
   - Verify workflow only runs after tests pass
   - Verify matrix generation produces expected configurations
@@ -72,7 +78,7 @@
   - Verify draft release is created with all DLL artifacts
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 4.1, 4.2, 4.3, 4.4, 4.5, 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [ ]* 6.3 Validate DLL artifacts
+- [ ]* 7.3 Validate DLL artifacts
   - Download DLLs from draft release
   - Verify DLL files are valid Windows PE files
   - Test loading DLLs in corresponding PHP versions
