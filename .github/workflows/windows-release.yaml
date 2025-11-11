@@ -72,7 +72,7 @@ jobs:
         id: extension-matrix
         uses: php/php-windows-builder/extension-matrix@v1
         with:
-          arch-list: 'x64, arm64'
+          arch-list: 'x64'
           php-version-list: "8.1, 8.2, 8.3, 8.4" # reading from composer.json doesn't seem to work?
 
   build:
@@ -92,18 +92,10 @@ jobs:
         shell: pwsh
         run: |
           $phpArch = "${{ matrix.arch }}"
-          
-          # Check if architecture is supported
-          if ($phpArch -eq "x86") {
-            echo "ERROR: 32-bit x86 builds are not supported"
-            echo "The crc_fast library does not provide 32-bit Windows releases"
-            echo "Supported architectures: x64, arm64"
-            exit 1
-          }
+
           
           $libArch = switch ($phpArch) {
             "x64" { "x86_64" }
-            "arm64" { "aarch64" }
             default { "x86_64" }
           }
           echo "lib_arch=$libArch" >> $env:GITHUB_OUTPUT
