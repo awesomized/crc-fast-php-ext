@@ -15,32 +15,38 @@ jobs:
   # Check if this workflow should run (only on successful test runs triggered by version tags)
   check-trigger:
     runs-on: ubuntu-latest
-    if: |
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push' &&
-      startsWith(github.event.workflow_run.head_branch, 'refs/tags/') &&
-      contains(github.event.workflow_run.head_branch, '.')
+    if: github.event.workflow_run.conclusion == 'success'
     outputs:
       should_run: ${{ steps.check.outputs.should_run }}
       tag_name: ${{ steps.check.outputs.tag_name }}
     steps:
+      - name: Debug workflow_run event
+        run: |
+          echo "Event name: ${{ github.event.workflow_run.event }}"
+          echo "Head branch: ${{ github.event.workflow_run.head_branch }}"
+          echo "Head SHA: ${{ github.event.workflow_run.head_sha }}"
+          echo "Conclusion: ${{ github.event.workflow_run.conclusion }}"
+          echo "Full event context:"
+          echo '${{ toJson(github.event.workflow_run) }}'
+      
       - name: Check if triggered by version tag
         id: check
         run: |
-          # Extract tag name from the branch ref
-          TAG_REF="${{ github.event.workflow_run.head_branch }}"
-          TAG_NAME="${TAG_REF#refs/tags/}"
+          # The head_branch contains the tag name directly (e.g., "0.0.1"), not "refs/tags/0.0.1"
+          # when the workflow is triggered by a tag push
+          HEAD_BRANCH="${{ github.event.workflow_run.head_branch }}"
+          EVENT_TYPE="${{ github.event.workflow_run.event }}"
           
-          echo "Tag reference: ${TAG_REF}"
-          echo "Tag name: ${TAG_NAME}"
+          echo "Event type: ${EVENT_TYPE}"
+          echo "Head branch: ${HEAD_BRANCH}"
           
-          # Check if tag matches N.N.N pattern (semantic version)
-          if [[ "${TAG_NAME}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Valid version tag detected: ${TAG_NAME}"
+          # Check if this was triggered by a push event and the branch name looks like a version tag
+          if [[ "${EVENT_TYPE}" == "push" ]] && [[ "${HEAD_BRANCH}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Valid version tag detected: ${HEAD_BRANCH}"
             echo "should_run=true" >> $GITHUB_OUTPUT
-            echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
+            echo "tag_name=${HEAD_BRANCH}" >> $GITHUB_OUTPUT
           else
-            echo "Not a valid version tag (N.N.N pattern): ${TAG_NAME}"
+            echo "Not a valid version tag push. Event: ${EVENT_TYPE}, Branch: ${HEAD_BRANCH}"
             echo "should_run=false" >> $GITHUB_OUTPUT
           fi
 
@@ -56,9 +62,20 @@ jobs:
         with:
           ref: ${{ needs.check-trigger.outputs.tag_name }}
       
+      - name: Debug - Show composer.json
+        run: |
+          echo "=== composer.json contents ==="
+          cat composer.json
+          echo ""
+          echo "=== PHP version requirement ==="
+          grep -A 1 '"require"' composer.json
+      
       - name: Generate extension build matrix
         id: extension-matrix
         uses: php/php-windows-builder/extension-matrix@v1
+        with:
+          arch-list: 'x64, arm64'
+          php-version-list: "8.1, 8.2, 8.3, 8.4" # reading from composer.json doesn't seem to work?
 
   build:
     runs-on: windows-2022
@@ -141,16 +158,34 @@ jobs:
         shell: pwsh
         run: |
           $extractPath = "C:\crc_fast"
+          $tempExtractPath = "C:\crc_fast_temp"
           
-          # Create extraction directory
+          # Create temporary extraction directory
+          New-Item -ItemType Directory -Force -Path $tempExtractPath | Out-Null
+          
+          # Extract the zip file to temp location
+          echo "Extracting crc_fast library to temporary location"
+          Expand-Archive -Path "crc_fast_lib.zip" -DestinationPath $tempExtractPath -Force
+          
+          # Find the versioned subdirectory (e.g., crc-fast-1.7.0-windows-x86_64)
+          $versionedDir = Get-ChildItem -Path $tempExtractPath -Directory | Select-Object -First 1
+          
+          if (-not $versionedDir) {
+            echo "ERROR: No subdirectory found after extraction"
+            exit 1
+          }
+          
+          echo "Found versioned directory: $($versionedDir.Name)"
+          
+          # Move contents from versioned directory to final location
           New-Item -ItemType Directory -Force -Path $extractPath | Out-Null
+          Move-Item -Path "$($versionedDir.FullName)\*" -Destination $extractPath -Force
           
-          # Extract the zip file
-          echo "Extracting crc_fast library to $extractPath"
-          Expand-Archive -Path "crc_fast_lib.zip" -DestinationPath $extractPath -Force
+          # Clean up temp directory
+          Remove-Item -Recurse -Force $tempExtractPath
           
           # List extracted contents for debugging
-          echo "Extracted contents:"
+          echo "Final directory structure:"
           Get-ChildItem -Recurse $extractPath | ForEach-Object { echo "  $($_.FullName)" }
       
       - name: Verify required library files
