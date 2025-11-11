@@ -10,18 +10,57 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    name: Test (${{ matrix.os }}, ${{ matrix.php-version }}, ${{ matrix.ts }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-22.04-arm, macos-14, windows-2022]
+        php-version: ['8.1', '8.2', '8.3', '8.4']
+        ts: [ts, nts]
     steps:
       - name: Checkout
         uses: actions/checkout@v4 # not pinning to commit since this is a GitHub action, which we trust
-      - name: Download crc_fast library release
+      
+      - name: Set platform and architecture (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
         run: |
-          ARCH="x86_64"
-          PLATFORM="linux"
-          
+          case "${{ matrix.os }}" in
+            ubuntu-22.04)
+              echo "PLATFORM=linux" >> $GITHUB_ENV
+              echo "ARCH=x86_64" >> $GITHUB_ENV
+              ;;
+            ubuntu-22.04-arm)
+              echo "PLATFORM=linux" >> $GITHUB_ENV
+              echo "ARCH=aarch64" >> $GITHUB_ENV
+              ;;
+            macos-14)
+              echo "PLATFORM=macos" >> $GITHUB_ENV
+              echo "ARCH=aarch64" >> $GITHUB_ENV
+              ;;
+          esac
+          echo "Platform: $PLATFORM, Architecture: $ARCH"
+      
+      - name: Set platform and architecture (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          switch ("${{ matrix.os }}") {
+            "windows-2022" {
+              echo "PLATFORM=windows" >> $env:GITHUB_ENV
+              echo "ARCH=x86_64" >> $env:GITHUB_ENV
+            }
+          }
+          Write-Host "Platform: $env:PLATFORM, Architecture: $env:ARCH"
+      
+      - name: Download crc_fast library release (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
           # Fetch the latest release version
           echo "Fetching latest crc_fast library release..."
-          LATEST_RELEASE=$(curl -sL https://api.github.com/repos/awesomized/crc-fast-rust/releases/latest | jq -r .tag_name)
+          LATEST_RELEASE=$(curl -sL -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/repos/awesomized/crc-fast-rust/releases/latest | jq -r .tag_name)
 
           if [ -z "$LATEST_RELEASE" ]; then
             echo "Error: Failed to fetch latest release version"
@@ -34,39 +73,180 @@ jobs:
           DOWNLOAD_URL="https://github.com/awesomized/crc-fast-rust/releases/download/${LATEST_RELEASE}/${ARTIFACT_NAME}"
           
           echo "Downloading crc_fast library ${LATEST_RELEASE} for ${PLATFORM}-${ARCH}"
-          curl -sL -o crc-fast.tar.gz "${DOWNLOAD_URL}" || {
+          curl -sL -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -o crc-fast.tar.gz "${DOWNLOAD_URL}" || {
             echo "Error: Failed to download crc_fast library release ${LATEST_RELEASE} from ${DOWNLOAD_URL}"
             exit 1
           }
           
           # Save version for next step
           echo "CRC_FAST_VERSION=${LATEST_RELEASE}" >> $GITHUB_ENV
-      - name: Extract crc_fast library
+      
+      - name: Download crc_fast library release (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # Get the latest release information from GitHub API
+          Write-Host "Fetching latest crc_fast library release..."
+          $releaseUrl = "https://api.github.com/repos/awesomized/crc-fast-rust/releases/latest"
+          $release = Invoke-RestMethod -Uri $releaseUrl -Headers @{
+            "Accept" = "application/vnd.github+json"
+            "User-Agent" = "GitHub-Actions"
+            "Authorization" = "Bearer ${{ secrets.GITHUB_TOKEN }}"
+          }
+          
+          $version = $release.tag_name
+          
+          if ([string]::IsNullOrEmpty($version)) {
+            Write-Error "Error: Failed to fetch latest release version"
+            exit 1
+          }
+          
+          Write-Host "Latest crc_fast library version: $version"
+          
+          # Find the Windows artifact for the target architecture
+          $artifactName = "crc-fast-$version-$env:PLATFORM-$env:ARCH.zip"
+          $asset = $release.assets | Where-Object { $_.name -eq $artifactName }
+          
+          if (-not $asset) {
+            Write-Error "ERROR: Could not find artifact '$artifactName' in release $version"
+            Write-Host "Available assets:"
+            $release.assets | ForEach-Object { Write-Host "  - $($_.name)" }
+            exit 1
+          }
+          
+          $downloadUrl = $asset.browser_download_url
+          Write-Host "Downloading from: $downloadUrl"
+          
+          # Download the artifact
+          $outputPath = "crc_fast_lib.zip"
+          Invoke-WebRequest -Uri $downloadUrl -OutFile $outputPath -Headers @{
+            "Accept" = "application/octet-stream"
+            "User-Agent" = "GitHub-Actions"
+            "Authorization" = "Bearer ${{ secrets.GITHUB_TOKEN }}"
+          }
+          
+          if (-not (Test-Path $outputPath)) {
+            Write-Error "ERROR: Failed to download crc_fast library"
+            exit 1
+          }
+          
+          Write-Host "Successfully downloaded crc_fast library ($([math]::Round((Get-Item $outputPath).Length / 1MB, 2)) MB)"
+          
+          # Save version for next step
+          echo "CRC_FAST_VERSION=$version" >> $env:GITHUB_ENV
+      
+      - name: Extract crc_fast library (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
         run: |
           tar -xzf crc-fast.tar.gz
-          EXTRACT_DIR="crc-fast-${CRC_FAST_VERSION}-linux-x86_64"
+          EXTRACT_DIR="crc-fast-${CRC_FAST_VERSION}-${PLATFORM}-${ARCH}"
           
-          # Verify required files exist
+          # Verify required header file exists
           if [ ! -f "${EXTRACT_DIR}/include/libcrc_fast.h" ]; then
             echo "Error: Required header file not found: ${EXTRACT_DIR}/include/libcrc_fast.h"
             exit 1
           fi
-          if [ ! -f "${EXTRACT_DIR}/lib/libcrc_fast.so" ]; then
-            echo "Error: Required library file not found: ${EXTRACT_DIR}/lib/libcrc_fast.so"
+          
+          # Verify required library file exists (handle both .so for Linux and .dylib for macOS)
+          if [ -f "${EXTRACT_DIR}/lib/libcrc_fast.so" ]; then
+            LIB_FILE="${EXTRACT_DIR}/lib/libcrc_fast.so"
+          elif [ -f "${EXTRACT_DIR}/lib/libcrc_fast.dylib" ]; then
+            LIB_FILE="${EXTRACT_DIR}/lib/libcrc_fast.dylib"
+          else
+            echo "Error: Required library file not found: ${EXTRACT_DIR}/lib/libcrc_fast.so or ${EXTRACT_DIR}/lib/libcrc_fast.dylib"
             exit 1
           fi
           
           # Copy files to expected locations
           mkdir -p lib include
-          cp "${EXTRACT_DIR}/lib/libcrc_fast.so" lib/
+          cp "${LIB_FILE}" lib/
           cp "${EXTRACT_DIR}/include/libcrc_fast.h" include/
           
           echo "Successfully extracted crc_fast library ${CRC_FAST_VERSION}"
+      
+      - name: Extract crc_fast library (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $extractPath = "C:\crc_fast"
+          $tempExtractPath = "C:\crc_fast_temp"
+          
+          # Create temporary extraction directory
+          New-Item -ItemType Directory -Force -Path $tempExtractPath | Out-Null
+          
+          # Extract the zip file to temp location
+          Write-Host "Extracting crc_fast library to temporary location"
+          Expand-Archive -Path "crc_fast_lib.zip" -DestinationPath $tempExtractPath -Force
+          
+          # Find the versioned subdirectory (e.g., crc-fast-1.7.0-windows-x86_64)
+          $dirs = Get-ChildItem -Path $tempExtractPath -Directory
+          
+          if ($dirs.Count -eq 0) {
+            Write-Error "ERROR: No subdirectory found after extraction"
+            exit 1
+          } elseif ($dirs.Count -gt 1) {
+            Write-Error "ERROR: Multiple subdirectories found after extraction. Expected only one."
+            $dirs | ForEach-Object { Write-Host "  $($_.FullName)" }
+            exit 1
+          }
+          
+          $versionedDir = $dirs[0]
+          Write-Host "Found versioned directory: $($versionedDir.Name)"
+          
+          # Move contents from versioned directory to final location
+          New-Item -ItemType Directory -Force -Path $extractPath | Out-Null
+          Move-Item -Path "$($versionedDir.FullName)\*" -Destination $extractPath -Force
+          
+          # Clean up temp directory
+          Remove-Item -Recurse -Force $tempExtractPath
+          
+          # Verify required header file exists
+          if (-not (Test-Path "$extractPath\include\libcrc_fast.h")) {
+            Write-Error "Error: Required header file not found: $extractPath\include\libcrc_fast.h"
+            exit 1
+          }
+          
+          # Verify required library file exists
+          if (-not (Test-Path "$extractPath\lib\crc_fast.lib")) {
+            Write-Error "Error: Required library file not found: $extractPath\lib\crc_fast.lib"
+            exit 1
+          }
+          
+          Write-Host "Successfully extracted crc_fast library $env:CRC_FAST_VERSION"
+      
+      - name: Setup PHP (Unix)
+        if: runner.os != 'Windows'
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: none
+          tools: phpize, php-config
+          ini-values: |
+            zend.assertions=-1
+            thread_safety=${{ matrix.ts == 'ts' && 'On' || 'Off' }}
+      
       - name: Phpize
+        if: runner.os != 'Windows'
         run: phpize
+      
       - name: Configure
+        if: runner.os != 'Windows'
         run: ./configure --with-crc-fast=.
+      
       - name: Make
+        if: runner.os != 'Windows'
         run: make
-      - name: Test
-        run: make test
+      
+      - name: Test (Unix)
+        if: runner.os != 'Windows'
+        run: NO_INTERACTION=1 make test
+      
+      - name: Build and Test (Windows)
+        if: runner.os == 'Windows'
+        uses: php/php-windows-builder/extension@v1
+        with:
+          php-version: ${{ matrix.php-version }}
+          arch: x64
+          ts: ${{ matrix.ts }}
+          args: --with-crc-fast=C:\crc_fast
