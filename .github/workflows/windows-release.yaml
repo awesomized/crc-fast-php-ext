@@ -168,12 +168,18 @@ jobs:
           Expand-Archive -Path "crc_fast_lib.zip" -DestinationPath $tempExtractPath -Force
           
           # Find the versioned subdirectory (e.g., crc-fast-1.7.0-windows-x86_64)
-          $versionedDir = Get-ChildItem -Path $tempExtractPath -Directory | Select-Object -First 1
+          $dirs = Get-ChildItem -Path $tempExtractPath -Directory
           
-          if (-not $versionedDir) {
+          if ($dirs.Count -eq 0) {
             echo "ERROR: No subdirectory found after extraction"
             exit 1
+          } elseif ($dirs.Count -gt 1) {
+            echo "ERROR: Multiple subdirectories found after extraction. Expected only one."
+            $dirs | ForEach-Object { echo "  $($_.FullName)" }
+            exit 1
           }
+          
+          $versionedDir = $dirs[0]
           
           echo "Found versioned directory: $($versionedDir.Name)"
           
@@ -234,7 +240,7 @@ jobs:
         with:
           name: php_crc_fast-${{ matrix.php-version }}-${{ matrix.arch }}-${{ matrix.ts }}
           path: |
-            ${{ matrix.arch }}/Release*/php_crc_fast.dll
+            ${{ matrix.arch }}/${{ matrix.ts == 'ts' && 'Release_TS' || 'Release' }}/php_crc_fast.dll
           if-no-files-found: error
 
   release:

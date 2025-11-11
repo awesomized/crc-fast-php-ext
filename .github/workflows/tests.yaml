@@ -21,8 +21,8 @@ jobs:
           
           # Fetch the latest release version
           echo "Fetching latest crc_fast library release..."
-          LATEST_RELEASE=$(curl -sL https://api.github.com/repos/awesomized/crc-fast-rust/releases/latest | grep '"tag_name":' | sed -E 's/.*"tag_name": "([^"]+)".*/\1/')
-          
+          LATEST_RELEASE=$(curl -sL https://api.github.com/repos/awesomized/crc-fast-rust/releases/latest | jq -r .tag_name)
+
           if [ -z "$LATEST_RELEASE" ]; then
             echo "Error: Failed to fetch latest release version"
             exit 1
@@ -35,7 +35,7 @@ jobs:
           
           echo "Downloading crc_fast library ${LATEST_RELEASE} for ${PLATFORM}-${ARCH}"
           curl -sL -o crc-fast.tar.gz "${DOWNLOAD_URL}" || {
-            echo "Error: Failed to download crc_fast library release ${LATEST_RELEASE}"
+            echo "Error: Failed to download crc_fast library release ${LATEST_RELEASE} from ${DOWNLOAD_URL}"
             exit 1
           }
           
