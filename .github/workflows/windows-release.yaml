@@ -15,7 +15,7 @@ jobs:
   # Check if this workflow should run (only on successful test runs triggered by version tags)
   check-trigger:
     runs-on: ubuntu-latest
-    if: github.event.workflow_run.conclusion == 'success'
+    if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch'
     outputs:
       should_run: ${{ steps.check.outputs.should_run }}
       tag_name: ${{ steps.check.outputs.tag_name }}
