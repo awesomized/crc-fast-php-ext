@@ -26,8 +26,6 @@ jobs:
           echo "Head branch: ${{ github.event.workflow_run.head_branch }}"
           echo "Head SHA: ${{ github.event.workflow_run.head_sha }}"
           echo "Conclusion: ${{ github.event.workflow_run.conclusion }}"
-          echo "Full event context:"
-          echo '${{ toJson(github.event.workflow_run) }}'
       
       - name: Check if triggered by version tag
         id: check
