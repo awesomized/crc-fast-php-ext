@@ -19,23 +19,29 @@ extern "C" {
 
 // Define htonll/ntohll for platforms that don't provide them
 #if defined(_WIN32) || defined(_WIN64)
-    // Windows SDK 10.0.26100.0+ provides htonll/ntohll in winsock2.h
-    // For older SDK versions, we need to define them ourselves
+    // Windows: winsock2.h provides htonll/ntohll in SDK 10.0.26100.0+
     #include <winsock2.h>
     
-    // Check if we're using an older Windows SDK that doesn't have these functions
-    // The functions were added in Windows SDK 10.0.26100.0
-    #if !defined(NTDDI_WIN10_NI) || NTDDI_VERSION < NTDDI_WIN10_NI
-        #ifndef htonll
-            inline uint64_t htonll(uint64_t x) {
-                return (((uint64_t)htonl((uint32_t)(x & 0xFFFFFFFF))) << 32) | htonl((uint32_t)(x >> 32));
-            }
-        #endif
-        #ifndef ntohll
-            inline uint64_t ntohll(uint64_t x) {
-                return (((uint64_t)ntohl((uint32_t)(x & 0xFFFFFFFF))) << 32) | ntohl((uint32_t)(x >> 32));
-            }
-        #endif
+    // For older Windows SDKs that don't have htonll/ntohll, provide fallback
+    // We use different function names to avoid conflicts with newer SDKs
+    namespace {
+        inline uint64_t php_htonll_fallback(uint64_t x) {
+            return (((uint64_t)htonl((uint32_t)(x & 0xFFFFFFFF))) << 32) | htonl((uint32_t)(x >> 32));
+        }
+        inline uint64_t php_ntohll_fallback(uint64_t x) {
+            return (((uint64_t)ntohl((uint32_t)(x & 0xFFFFFFFF))) << 32) | ntohl((uint32_t)(x >> 32));
+        }
+    }
+    
+    // Check if we have the native functions (SDK 10.0.26100.0+)
+    #if defined(NTDDI_VERSION) && defined(NTDDI_WIN10_NI) && (NTDDI_VERSION >= NTDDI_WIN10_NI)
+        // Use the native functions from winsock2.h
+        #define PHP_HTONLL(x) htonll(x)
+        #define PHP_NTOHLL(x) ntohll(x)
+    #else
+        // Use our fallback implementations
+        #define PHP_HTONLL(x) php_htonll_fallback(x)
+        #define PHP_NTOHLL(x) php_ntohll_fallback(x)
     #endif
 #else
     // Unix-like platforms
@@ -50,6 +56,8 @@ extern "C" {
         #define ntohll(x) (x)
         #endif
     #endif
+    #define PHP_HTONLL(x) htonll(x)
+    #define PHP_NTOHLL(x) ntohll(x)
 #endif
 
 /* For compatibility with older PHP versions */
@@ -150,7 +158,7 @@ static inline void php_crc_fast_format_result(INTERNAL_FUNCTION_PARAMETERS, zend
             RETURN_STRINGL((char*)&result32, sizeof(result32));
         } else {
             // 64-bit CRC
-            result = htonll(result);
+            result = PHP_HTONLL(result);
             RETURN_STRINGL((char*)&result, sizeof(result));
         }
     } else {
@@ -479,7 +487,7 @@ PHP_FUNCTION(CrcFast_combine)
         if (is_crc32) {
             cs1 = ntohl(*((uint32_t*)checksum1));
         } else {
-            cs1 = ntohll(*((uint64_t*)checksum1));
+            cs1 = PHP_NTOHLL(*((uint64_t*)checksum1));
         }
     } else if (checksum1_len == expected_hex_size) {
         // Hex input
@@ -525,7 +533,7 @@ PHP_FUNCTION(CrcFast_combine)
         if (is_crc32) {
             cs2 = ntohl(*((uint32_t*)checksum2));
         } else {
-            cs2 = ntohll(*((uint64_t*)checksum2));
+            cs2 = PHP_NTOHLL(*((uint64_t*)checksum2));
         }
     } else if (checksum2_len == expected_hex_size) {
         // Hex input
