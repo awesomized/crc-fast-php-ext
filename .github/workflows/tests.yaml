@@ -238,6 +238,12 @@ jobs:
         if: runner.os != 'Windows'
         run: make
       
+      - name: Set library path for macOS
+        if: runner.os == 'macOS'
+        run: |
+          echo "DYLD_LIBRARY_PATH=${{ github.workspace }}/lib:$DYLD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "Set DYLD_LIBRARY_PATH to ${{ github.workspace }}/lib"
+      
       - name: Test (Unix)
         if: runner.os != 'Windows'
         run: NO_INTERACTION=1 make test

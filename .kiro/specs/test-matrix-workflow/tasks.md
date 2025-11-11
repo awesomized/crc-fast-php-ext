@@ -80,3 +80,10 @@
   - Ensure workflow still triggers on push, pull_request, workflow_dispatch, and workflow_call
   - Confirm no changes needed to trigger configuration
   - _Requirements: 5.5_
+
+- [x] 13. Fix macOS dynamic library loading for tests
+  - Add step before Unix test step to set DYLD_LIBRARY_PATH on macOS
+  - Set DYLD_LIBRARY_PATH to point to the lib directory containing libcrc_fast.dylib
+  - Use conditional to run only on macOS (if: runner.os == 'macOS')
+  - Export environment variable for subsequent test step
+  - _Requirements: 1.5, 8.3_
