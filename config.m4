@@ -22,7 +22,7 @@ if test "$PHP_CRC_FAST" != "no"; then
   fi
 
   if test "$php_version" -lt "80100"; then
-    AC_MSG_ERROR([You need at least PHP 8.1.0 to be able to use this version of simdutf. PHP $php_version found])
+    AC_MSG_ERROR([You need at least PHP 8.1.0 to be able to use this version of crc_fast. PHP $php_version found])
   else
     AC_MSG_RESULT([$php_version, ok])
   fi
