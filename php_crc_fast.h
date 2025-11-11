@@ -29,7 +29,7 @@ extern zend_module_entry crc_fast_module_entry;
 
 # define phpext_crc_fast_ptr &crc_fast_module_entry
 
-# define PHP_CRC_FAST_VERSION "1.0.0"
+# define PHP_CRC_FAST_VERSION "1.1.0"
 
 # if defined(ZTS) && defined(COMPILE_DL_CRC_FAST)
 ZEND_TSRMLS_CACHE_EXTERN()
